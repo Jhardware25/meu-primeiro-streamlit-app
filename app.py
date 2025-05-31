@@ -31,17 +31,16 @@ prazo_credito_meses = st.slider(
     value=36,
     step=1
 )
-
-taxa_juros_credito_anual = st.number_input(
-    "Taxa de Juros do Crédito (com garantia) (% ao ano):",
-    min_value=0.1,
-    max_value=30.0,
-    value=14.4, # Exemplo: 1.2% a.m. * 12
-    step=0.1,
+taxa_juros_credito_input = st.number_input(
+    "Taxa de Juros do Crédito (com garantia) (% ao mês):", # Alterado para ao mês
+    min_value=0.01, # Mínimo 0.01% para evitar divisão por zero/problemas
+    max_value=5.0, # Ex: até 5% a.m. (ajuste conforme necessário)
+    value=1.2, # Exemplo: 1.2% a.m.
+    step=0.01,
     format="%.2f"
 )
-# Converter taxa anual para mensal para cálculos (juros compostos)
-taxa_juros_credito_mensal = (1 + taxa_juros_credito_anual / 100)**(1/12) - 1
+# Converte para decimal para cálculos
+taxa_juros_credito_mensal = taxa_juros_credito_input / 100
 
 iof_percentual = st.number_input(
     "IOF (% sobre o valor do crédito):",
@@ -71,16 +70,16 @@ valor_aplicacao = st.number_input(
     format="%.2f"
 )
 
-taxa_rendimento_aplicacao_anual = st.number_input(
-    "Taxa de Rendimento da Aplicação (% ao ano):",
-    min_value=0.1,
-    max_value=20.0,
-    value=9.6, # Exemplo: 0.8% a.m. * 12
-    step=0.1,
+taxa_rendimento_aplicacao_input = st.number_input(
+    "Taxa de Rendimento da Aplicação (% ao mês):", # Alterado para ao mês
+    min_value=0.01, # Mínimo 0.01%
+    max_value=2.0, # Ex: até 2% a.m. (ajuste conforme necessário)
+    value=0.8, # Exemplo: 0.8% a.m.
+    step=0.01,
     format="%.2f"
 )
-# Converter taxa anual para mensal para cálculos
-taxa_rendimento_aplicacao_mensal = (1 + taxa_rendimento_aplicacao_anual / 100)**(1/12) - 1
+# Converte para decimal para cálculos
+taxa_rendimento_aplicacao_mensal = taxa_rendimento_aplicacao_input / 100
 
 ir_aliquota = st.slider(
     "Alíquota de Imposto de Renda (IR) sobre Rendimento da Aplicação (%):",
@@ -154,12 +153,12 @@ if st.button("Simular Operação"):
     with col1:
         st.metric("Valor do Crédito", f"R$ {valor_credito:,.2f}")
         st.metric("Prazo (meses)", f"{prazo_credito_meses}")
-        st.metric("Taxa de Juros do Crédito (a.a.)", f"{taxa_juros_credito_anual:,.2f}%")
+        st.metric("Taxa de Juros do Crédito (a.m.)", f"{taxa_juros_credito_input:,.2f}%") # Exibe o valor de entrada mensal
         st.metric("Parcela Mensal do Crédito", f"R$ {parcela_mensal_credito:,.2f}")
 
     with col2:
         st.metric("Valor da Aplicação em Garantia", f"R$ {valor_aplicacao:,.2f}")
-        st.metric("Rendimento da Aplicação (a.a.)", f"{taxa_rendimento_aplicacao_anual:,.2f}%")
+        st.metric("Rendimento da Aplicação (a.m.)", f"{taxa_rendimento_aplicacao_input:,.2f}%") # Exibe o valor de entrada mensal
         st.metric("IR sobre Aplicação", f"{ir_aliquota*100:,.1f}%")
         st.metric("Rendimento Líquido Mensal da Aplicação", f"R$ {rendimento_liquido_mensal_aplicacao:,.2f}")
 
