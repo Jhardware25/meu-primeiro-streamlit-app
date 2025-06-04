@@ -23,7 +23,7 @@ def format_brl(value):
     return f"R$ {formatted_value.replace(',', 'X').replace('.', ',').replace('X', '.')}"
 
 
-st.title("💰 Simulador de Crédito com Garantia de Aplicação")
+st.title("💰 Simulador de Crédito Com Garantia de Aplicação Financeira")
 
 # --- ENTRADAS DO USUÁRIO ---
 st.header("Dados da Operação de Crédito:")
