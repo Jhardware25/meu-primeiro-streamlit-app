@@ -1,206 +1,269 @@
 import streamlit as st
-import numpy_financial as npf # Biblioteca para cálculos financeiros como PMT
+import pandas as pd
+import numpy_financial as npf # Certifique-se de que numpy-financial está instalado: pip install numpy-financial
+import plotly.express as px
+import locale
 
-# --- Configurações da Página ---
-st.set_page_config(
-    page_title="Simulador de Crédito com Garantia",
-    page_icon="💰",
-    layout="centered" # "wide" para tela cheia, "centered" para layout centralizado
-)
+# Configura o locale para Português do Brasil
+# Isso deve ser feito ANTES de usar qualquer função de formatação de locale
+locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
 
-# --- Título e Descrição ---
-st.title("💰 Simulador de Crédito Empresarial com Garantia")
-st.markdown("Preencha os campos abaixo para simular as vantagens de utilizar sua aplicação em renda fixa como garantia na operação de crédito.")
-st.markdown("---")
+st.set_page_config(layout="wide")
 
-# --- Seção de Entrada de Dados ---
-st.header("Dados da Operação de Crédito")
+st.title("💰 Simulador de Crédito com Garantia de Aplicação")
+
+# --- ENTRADAS DO USUÁRIO ---
+st.header("Dados da Operação de Crédito:")
 
 valor_credito = st.number_input(
-    "Valor do Crédito Desejado (R$):",
+    "Valor do Crédito (R$):",
     min_value=1000.0,
-    value=200000.0,
+    value=100000.0,
     step=1000.0,
     format="%.2f"
 )
-
+# Prazo máximo limitado a 60 meses
 prazo_credito_meses = st.slider(
     "Prazo do Crédito (meses):",
     min_value=1,
-    max_value=120, # Até 10 anos
-    value=36,
+    max_value=60, # Prazo máximo alterado para 60 meses
+    value=60,
     step=1
 )
-taxa_juros_credito_input = st.number_input(
-    "Taxa de Juros do Crédito (com garantia) (% ao mês):", # Alterado para ao mês
-    min_value=0.01, # Mínimo 0.01% para evitar divisão por zero/problemas
-    max_value=5.0, # Ex: até 5% a.m. (ajuste conforme necessário)
-    value=1.2, # Exemplo: 1.2% a.m.
+
+taxa_juros_pactuada_input = st.number_input(
+    "Taxa de Juros Pactuada do Crédito (% ao mês):",
+    min_value=0.01,
+    value=0.8,
     step=0.01,
     format="%.2f"
 )
-# Converte para decimal para cálculos
-taxa_juros_credito_mensal = taxa_juros_credito_input / 100
+taxa_juros_pactuada_mensal = taxa_juros_pactuada_input / 100
+
+tipo_taxa_credito = st.radio(
+    "Tipo de Taxa do Crédito:",
+    ("Prefixada", "Pós-fixada (TR + Taxa)"),
+    index=0,
+    help="Escolha se a taxa do crédito será fixa ou terá um componente de TR."
+)
+
+taxa_indexador_anual = 0.0
+if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
+    taxa_indexador_anual = st.number_input(
+        "Taxa do Indexador Anual (TR/ano - %):",
+        min_value=0.0,
+        value=3.0,
+        step=0.01,
+        format="%.2f",
+        help="Taxa do indexador anual (como a TR) que será somada à taxa pactuada."
+    )
+    taxa_indexador_mensal = (1 + taxa_indexador_anual / 100)**(1/12) - 1
+else:
+    taxa_indexador_mensal = 0.0
 
 iof_percentual = st.number_input(
-    "IOF (% sobre o valor do crédito):",
+    "IOF Total (% do valor do crédito):",
     min_value=0.0,
-    max_value=10.0,
-    value=3.95, # Valor padrão sugerido: 3.95%
+    value=0.38,
+    step=0.01,
+    format="%.2f"
+)
+tac_percentual = st.number_input(
+    "TAC (% do valor do crédito):",
+    min_value=0.0,
+    value=0.0,
     step=0.01,
     format="%.2f"
 )
 
-tac_valor = st.number_input(
-    "TAC - Tarifa de Abertura de Crédito (R$):",
-    min_value=0.0,
-    value=0.0, # Valor padrão sugerido: 0.00
-    step=1.0,
-    format="%.2f"
-)
-st.markdown("---")
-
-st.header("Dados da Aplicação Financeira (Garantia)")
-
+st.header("Dados da Aplicação em Garantia:")
 valor_aplicacao = st.number_input(
-    "Valor da Aplicação em Renda Fixa (R$):",
+    "Valor da Aplicação em Garantia (R$):",
     min_value=1000.0,
-    value=400000.0,
+    value=50000.0,
     step=1000.0,
     format="%.2f"
 )
 
 taxa_rendimento_aplicacao_input = st.number_input(
-    "Taxa de Rendimento da Aplicação (% ao mês):", # Alterado para ao mês
-    min_value=0.01, # Mínimo 0.01%
-    max_value=2.0, # Ex: até 2% a.m. (ajuste conforme necessário)
-    value=0.8, # Exemplo: 0.8% a.m.
+    "Taxa de Rendimento da Aplicação (% ao mês):",
+    min_value=0.01,
+    max_value=2.0,
+    value=0.8,
     step=0.01,
     format="%.2f"
 )
-# Converte para decimal para cálculos
 taxa_rendimento_aplicacao_mensal = taxa_rendimento_aplicacao_input / 100
 
 ir_aliquota = st.slider(
-    "Alíquota de Imposto de Renda (IR) sobre Rendimento da Aplicação (%):",
+    "Alíquota de Imposto de Renda sobre Rendimento da Aplicação (%):",
     min_value=0.0,
-    max_value=22.5, # Alíquota máxima comum para RF de longo prazo
-    value=15.0, # Exemplo: para prazos acima de 720 dias
-    step=0.5
-) / 100 # Converte para decimal
+    max_value=22.5,
+    value=15.0,
+    step=0.5,
+    format="%.1f",
+    help="Alíquota de IR para o cálculo do rendimento líquido da aplicação."
+) / 100
 
-st.markdown("---")
 
-# --- Botão de Calcular ---
-if st.button("Simular Operação"):
+# --- BOTÃO DE SIMULAÇÃO ---
+if st.button("Simular Operação", key="btn_simular_operacao"):
     # --- INÍCIO: SEÇÃO DE CÁLCULOS DA OPERAÇÃO DE CRÉDITO E APLICAÇÃO ---
-    # TODOS os cálculos precisam estar aqui, ANTES de qualquer comando 'st.xyz' de exibição.
 
-    # Calcular IOF
+    # 1. CÁLCULOS INICIAIS
     iof_total = valor_credito * (iof_percentual / 100)
+    tac_valor = valor_credito * (tac_percentual / 100)
+    valor_liquido_recebido = valor_credito - iof_total - tac_valor
 
-    # Valor líquido recebido pelo cliente (após IOF e TAC)
-    valor_liquido_recebido = valor_credito - iof_total - tac_valor # Certifique-se que 'tac_valor' esteja definido (input ou cálculo)
+    # 2. CÁLCULO DA TAXA DE JUROS EFETIVA DO CRÉDITO
+    if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
+        taxa_juros_credito_efetiva_mensal = taxa_juros_pactuada_mensal + taxa_indexador_mensal
+    else:
+        taxa_juros_credito_efetiva_mensal = taxa_juros_pactuada_mensal
+    
+    # 3. CÁLCULO DA PARCELA MENSAL E JUROS TOTAIS (BASE TABLE PRICE)
+    if prazo_credito_meses == 0:
+        parcela_mensal_credito = 0.0
+        total_juros_pagos_credito = 0.0
+    else:
+        try:
+            parcela_mensal_credito = npf.pmt(
+                taxa_juros_credito_efetiva_mensal,
+                prazo_credito_meses,
+                -valor_credito
+            )
+            total_juros_pagos_credito = (parcela_mensal_credito * prazo_credito_meses) - valor_credito
+        except Exception as e:
+            st.error(f"Erro no cálculo da parcela do crédito: {e}. Verifique as taxas e prazos.")
+            parcela_mensal_credito = 0.0
+            total_juros_pagos_credito = 0.0
 
-    # Calcular a parcela usando numpy_financial.pmt (pagamento mensal de uma anuidade)
-    if taxa_juros_credito_mensal > 0:
-        parcela_mensal_credito = -npf.pmt(
-            taxa_juros_credito_mensal,
-            prazo_credito_meses,
-            valor_credito
-        )
-    else: # Se a taxa for 0, parcela é simplesmente Valor/Prazo
-        parcela_mensal_credito = valor_credito / prazo_credito_meses if prazo_credito_meses > 0 else 0
-
-    total_pago_credito = parcela_mensal_credito * prazo_credito_meses + iof_total + tac_valor
-    total_juros_pagos_credito = total_pago_credito - valor_credito
-
-    # --- Cálculos da Aplicação Financeira ---
-    # Rendimento bruto mensal da aplicação
-    rendimento_bruto_mensal_aplicacao = valor_aplicacao * taxa_rendimento_aplicacao_mensal
-
-    # Rendimento bruto acumulado da aplicação
-    montante_final_aplicacao_bruto = valor_aplicacao * ((1 + taxa_rendimento_aplicacao_mensal)**prazo_credito_meses)
-    rendimento_bruto_total_aplicacao = montante_final_aplicacao_bruto - valor_aplicacao
-
-    # Cálculo do IR sobre o rendimento bruto total
+    # 4. CÁLCULOS DA APLICAÇÃO
+    rendimento_bruto_total_aplicacao = valor_aplicacao * ((1 + taxa_rendimento_aplicacao_mensal)**prazo_credito_meses - 1)
     ir_total_aplicacao = rendimento_bruto_total_aplicacao * ir_aliquota
     rendimento_liquido_total_aplicacao = rendimento_bruto_total_aplicacao - ir_total_aplicacao
+    capital_total_acumulado_aplicacao = valor_aplicacao + rendimento_liquido_total_aplicacao
 
-    # Rendimento líquido mensal aproximado
-    rendimento_liquido_mensal_aplicacao = (rendimento_liquido_total_aplicacao / prazo_credito_meses) if prazo_credito_meses > 0 else 0
-
-    # --- Análise Comparativa ---
-    # Parcela Líquida Efetiva (Parcela do Crédito - Rendimento Líquido Mensal da Aplicação)
-    parcela_liquida_efetiva = parcela_mensal_credito - rendimento_liquido_mensal_aplicacao
-
-    # Ganho Líquido Total da Operação para o Cliente
+    # 5. CÁLCULO DO GANHO LÍQUIDO TOTAL
     ganho_liquido_total_operacao = rendimento_liquido_total_aplicacao - total_juros_pagos_credito
 
-    # --- FIM: SEÇÃO DE CÁLCULOS ---
+    # 6. GERAÇÃO DOS DADOS MENSAIS PARA OS GRÁFICOS
+    historico = []
+    saldo_atual_credito = valor_credito
+    saldo_atual_aplicacao = valor_aplicacao
+
+    for mes_idx in range(1, prazo_credito_meses + 1):
+        # Crédito
+        juros_mes_credito = saldo_atual_credito * taxa_juros_credito_efetiva_mensal
+        amortizacao_mes = parcela_mensal_credito - juros_mes_credito
+        saldo_atual_credito -= amortizacao_mes
+
+        # Aplicação
+        rendimento_mes_bruto = saldo_atual_aplicacao * taxa_rendimento_aplicacao_mensal
+        saldo_atual_aplicacao += rendimento_mes_bruto
+
+        historico.append({
+            'Mês': mes_idx,
+            'Saldo Devedor do Crédito (R$)': max(0, saldo_atual_credito),
+            'Parcela Mensal do Crédito (R$)': parcela_mensal_credito,
+            'Rendimento Líquido Mensal da Aplicação (R$)': rendimento_mes_bruto * (1 - ir_aliquota),
+            'Saldo da Aplicação em Garantia (R$)': saldo_atual_aplicacao
+        })
+
+    df_evolucao = pd.DataFrame(historico)
+    df_fluxo_mensal = pd.DataFrame(historico)
+
+    # --- FIM DA SEÇÃO DE CÁLCULOS ---
 
 
     # --- INÍCIO: SEÇÃO DE EXIBIÇÃO DOS RESULTADOS ---
-    # TUDO O QUE FOR EXIBIDO AGORA DEVE ESTAR AQUI, COM 4 ESPAÇOS DE INDENTAÇÃO.
-    st.header("Resultados da Simulação")
+    st.header("Resultados da Simulação:")
 
-    st.subheader("Sua Parcela Mensal Líquida Efetiva (já descontando o rendimento da aplicação) é de:")
-    st.success(f"**R$ {parcela_liquida_efetiva:,.2f}**") # Agora 'parcela_liquida_efetiva' estará definida.
-    st.info("Isso significa que, parte do valor da sua parcela de crédito é coberta pelo rendimento líquido da sua aplicação!")
-
-    st.markdown("---")
-
-    col1, col2 = st.columns(2)
-
+    st.subheader("Resumo Financeiro da Operação:")
+    col1, col2, col3 = st.columns(3)
     with col1:
-            st.metric("Valor do Crédito", f"R$ {valor_credito:,.2f}")
-            st.metric("Prazo (meses)", f"{prazo_credito_meses}")
-            st.metric("Taxa de Juros do Crédito (a.m.)", f"{taxa_juros_credito_input:,.2f}%")
-            st.metric("Parcela Mensal Bruta do Crédito", f"R$ {parcela_mensal_credito:,.2f}")
+        # Alteração aqui: usando locale.currency
+        st.metric("Valor Líquido Recebido", locale.currency(valor_liquido_recebido, grouping=True))
+        st.metric("Parcela Mensal do Crédito", locale.currency(parcela_mensal_credito, grouping=True))
+        st.metric("Total de Juros Pagos no Crédito", locale.currency(total_juros_pagos_credito, grouping=True))
 
     with col2:
-            st.metric("Valor da Aplicação em Garantia", f"R$ {valor_aplicacao:,.2f}")
-            st.metric("Rendimento da Aplicação (a.m.)", f"{taxa_rendimento_aplicacao_input:,.2f}%")
-            st.metric("IR sobre Aplicação", f"{ir_aliquota*100:,.1f}%")
-            st.metric("IOF Total", f"R$ {iof_total:,.2f}")
-            st.metric("TAC", f"R$ {tac_valor:,.2f}")
-            st.metric("Custo Total do Crédito", f"R$ {total_pago_credito:,.2f}")
-            st.metric("Rendimento Líquido Mensal da Aplicação", f"R$ {rendimento_liquido_mensal_aplicacao:,.2f}")
+        st.metric("Rendimento Bruto Total da Aplicação", locale.currency(rendimento_bruto_total_aplicacao, grouping=True))
+        st.metric("Imposto de Renda Retido", locale.currency(ir_total_aplicacao, grouping=True))
+        st.metric("Rendimento Líquido Total", locale.currency(rendimento_liquido_total_aplicacao, grouping=True))
 
-
+    with col3:
+        st.metric("Ganho Líquido Total da Operação", locale.currency(ganho_liquido_total_operacao, grouping=True))
 
     st.subheader("Resumo Financeiro Detalhado:")
-    st.write(f"- **Juros Totais Pagos no Crédito:** R$ {total_juros_pagos_credito:,.2f}")
-    st.write(f"- **Rendimento Bruto Total da Aplicação:** R$ {rendimento_bruto_total_aplicacao:,.2f}")
-    st.write(f"- **Imposto de Renda Retido na Aplicação:** R$ {ir_total_aplicacao:,.2f}")
-    st.write(f"- **Rendimento Líquido Total da Aplicação:** R$ {rendimento_liquido_total_aplicacao:,.2f}")
-    st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **R$ {ganho_liquido_total_operacao:,.2f}**")
-
-
-        # Lógica da Mensagem Final
+    # Alteração aqui: usando locale.currency
+    st.write(f"- **Juros Totais Pagos no Crédito:** {locale.currency(total_juros_pagos_credito, grouping=True)}")
+    st.write(f"- **Rendimento Bruto Total da Aplicação:** {locale.currency(rendimento_bruto_total_aplicacao, grouping=True)}")
+    st.write(f"- **Imposto de Renda Retido na Aplicação:** {locale.currency(ir_total_aplicacao, grouping=True)}")
+    st.write(f"- **Rendimento Líquido Total da Aplicação:** {locale.currency(rendimento_liquido_total_aplicacao, grouping=True)}")
+    st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{locale.currency(capital_total_acumulado_aplicacao, grouping=True)}**")
+    st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{locale.currency(ganho_liquido_total_operacao, grouping=True)}**")
+    # Lógica da Mensagem Final
     if ganho_liquido_total_operacao >= 0:
-            st.success("🎉 Esta operação de crédito, considerando o rendimento da sua aplicação, resulta em um **ganho líquido total** para você!")
-            st.info(f"""
-            💡 Você não apenas cobriu os juros e custos do crédito com sua aplicação, como também obteve um **ganho de R$ {ganho_liquido_total_operacao:,.2f}**!
-            Isso demonstra a **vantagem de usar sua aplicação como garantia** para otimizar seus custos de crédito ao máximo.
-            """)
+        st.success("🎉 Esta operação de crédito, considerando o rendimento da sua aplicação, resulta em um **ganho líquido total** para você!")
+        st.info(f"""
+        💡 Você não apenas cobriu os juros e custos do crédito com sua aplicação, como também obteve um **ganho de R$ {ganho_liquido_total_operacao:,.2f}**!
+        Isso demonstra a **vantagem de usar sua aplicação como garantia** para otimizar seus custos de crédito ao máximo.
+        """)
     else:
-            st.warning("⚠️ Esta operação de crédito, mesmo com o rendimento da sua aplicação, resulta em um **custo líquido total**.")
-            st.info(f"""
-            💡 Embora sua aplicação tenha gerado **R$ {rendimento_liquido_total_aplicacao:,.2f}** em rendimentos líquidos,
-            e isso tenha **reduzido o custo efetivo** da sua dívida,
-            o custo final da operação foi de **R$ {abs(ganho_liquido_total_operacao):,.2f}**.
-            Mesmo assim, usar a aplicação como garantia ajudou a mitigar o custo total do seu crédito!
-            """)
+        st.warning("⚠️ Esta operação de crédito, mesmo com o rendimento da sua aplicação, resulta em um **custo líquido total**.")
+        st.info("O rendimento gerado pela sua aplicação foi crucial! Ele cobriu parte dos juros do seu crédito, resultando em uma redução significativa no valor final que você pagou.")
+
+
+    # --- Exibição dos Gráficos ---
+    st.subheader("📊 Evolução Financeira ao Longo do Contrato")
+    # Verificação se os DataFrames não estão vazios para evitar erros de Plotly
+    if not df_evolucao.empty:
+        fig_saldo = px.line(df_evolucao, x='Mês', y=['Saldo Devedor do Crédito (R$)', 'Saldo da Aplicação em Garantia (R$)'],
+                            title='Evolução do Saldo Devedor do Crédito vs. Saldo da Aplicação em Garantia',
+                            labels={
+                                "value": "Valor (R$)",
+                                "variable": "Ativo"
+                            },
+                            line_shape="spline",
+                            height=400
+                            )
+        fig_saldo.update_layout(hovermode="x unified", legend_title_text='Tipo')
+        fig_saldo.update_xaxes(showgrid=True, zeroline=True)
+        fig_saldo.update_yaxes(showgrid=True, zeroline=True)
+        st.plotly_chart(fig_saldo, use_container_width=True)
+    else:
+        st.info("Não é possível gerar gráficos para um prazo de contrato de 0 meses.")
+
+    if not df_fluxo_mensal.empty:
+        fig_fluxo = px.bar(df_fluxo_mensal, x='Mês', y=['Parcela Mensal do Crédito (R$)', 'Rendimento Líquido Mensal da Aplicação (R$)'],
+                            title='Parcela Mensal do Crédito vs. Rendimento Líquido Mensal da Aplicação',
+                            labels={
+                                "value": "Valor (R$)",
+                                "variable": "Tipo de Fluxo"
+                            },
+                            barmode='group',
+                            height=400,
+                            color_discrete_map={
+                                'Parcela Mensal do Crédito (R$)': 'red',
+                                'Rendimento Líquido Mensal da Aplicação (R$)': 'green'
+                            }
+                        )
+        fig_fluxo.update_layout(hovermode="x unified", legend_title_text='Fluxo')
+        fig_fluxo.update_xaxes(showgrid=True, zeroline=True)
+        fig_fluxo.update_yaxes(showgrid=True, zeroline=True)
+        st.plotly_chart(fig_fluxo, use_container_width=True)
+
+    # --- FIM DA SEÇÃO DE EXIBIÇÃO DOS RESULTADOS ---
 
     st.markdown("---")
     st.subheader("Observações Importantes:")
-    st.info("""
-        * Este simulador considera a **Tabela Price** para o cálculo da parcela do crédito.
-        * As taxas e tarifas utilizadas são as inseridas na simulação.
-        * O Imposto de Renda sobre a aplicação é calculado sobre o rendimento total, com base na alíquota informada.
-        * Esta simulação não considera outros custos como seguros ou taxas de manutenção de conta.
-        * O valor da aplicação serve como garantia, mas continua rendendo para você durante o prazo do crédito.
-        """)
-        # --- FIM: SEÇÃO DE EXIBIÇÃO DOS RESULTADOS ---
-        
+    st.write("""
+    - Os cálculos são baseados na **Tabela Price** para o crédito.
+    - O rendimento da aplicação é calculado com **juros compostos mensais**.
+    - O **Imposto de Renda (IR)** na aplicação é aplicado sobre o rendimento bruto total ao final do período, conforme a alíquota informada.
+    - A **TR (Taxa Referencial)** é uma taxa de juros que pode variar. Para simulações futuras, considere que seu valor pode mudar.
+    - Esta é uma simulação e os valores reais podem variar. Consulte sempre um profissional financeiro.
+    """)
+
+# --- FIM DO BLOCO if st.button ---
