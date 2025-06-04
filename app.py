@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
-import numpy_financial as npf # Certifique-se de que numpy-financial está instalado: pip install numpy-financial
+import numpy_financial as npf
 import plotly.express as px
+
+st.set_page_config(layout="wide")
 
 # Função para formatar valores em Reais (R$) com padrão brasileiro
 def format_brl(value):
@@ -10,17 +12,16 @@ def format_brl(value):
         value = float(value)
     except (ValueError, TypeError):
         return "R$ --" # Ou outra mensagem de erro
-
+    
     # Formata o número com 2 casas decimais e separador de milhares americano (ponto como decimal)
     formatted_value = f"{value:,.2f}"
-
+    
     # Inverte os separadores para o padrão brasileiro (vírgula como decimal, ponto como milhar)
     # 1. Troca vírgulas por um caractere temporário (ex: 'X')
     # 2. Troca pontos por vírgulas
     # 3. Troca o caractere temporário por pontos
     return f"R$ {formatted_value.replace(',', 'X').replace('.', ',').replace('X', '.')}"
 
-st.set_page_config(layout="wide")
 
 st.title("💰 Simulador de Crédito com Garantia de Aplicação")
 
@@ -139,6 +140,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         total_juros_pagos_credito = 0.0
     else:
         try:
+            # npf.pmt retorna um valor negativo por convenção, então multiplicamos por -1
             parcela_mensal_credito = npf.pmt(
                 taxa_juros_credito_efetiva_mensal,
                 prazo_credito_meses,
@@ -168,7 +170,9 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         # Crédito
         juros_mes_credito = saldo_atual_credito * taxa_juros_credito_efetiva_mensal
         amortizacao_mes = parcela_mensal_credito - juros_mes_credito
-        saldo_atual_credito -= amortizacao_mes
+        
+        # Garante que o saldo não fique negativo devido a pequenas imprecisões de ponto flutuante no último mês
+        saldo_atual_credito = max(0, saldo_atual_credito - amortizacao_mes)
 
         # Aplicação
         rendimento_mes_bruto = saldo_atual_aplicacao * taxa_rendimento_aplicacao_mensal
@@ -176,7 +180,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
         historico.append({
             'Mês': mes_idx,
-            'Saldo Devedor do Crédito (R$)': max(0, saldo_atual_credito),
+            'Saldo Devedor do Crédito (R$)': saldo_atual_credito, # Já tratado com max(0, ...)
             'Parcela Mensal do Crédito (R$)': parcela_mensal_credito,
             'Rendimento Líquido Mensal da Aplicação (R$)': rendimento_mes_bruto * (1 - ir_aliquota),
             'Saldo da Aplicação em Garantia (R$)': saldo_atual_aplicacao
@@ -194,32 +198,31 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     st.subheader("Resumo Financeiro da Operação:")
     col1, col2, col3 = st.columns(3)
     with col1:
-        # Alteração aqui: usando locale.currency
-        st.metric("Valor Líquido Recebido", format_brl(valor_liquido_recebido, grouping=True))
-        st.metric("Parcela Mensal do Crédito", format_brl(parcela_mensal_credito, grouping=True))
-        st.metric("Total de Juros Pagos no Crédito", format_brl(total_juros_pagos_credito, grouping=True))
+        st.metric("Valor Líquido Recebido", format_brl(valor_liquido_recebido))
+        st.metric("Parcela Mensal do Crédito", format_brl(parcela_mensal_credito))
+        st.metric("Total de Juros Pagos no Crédito", format_brl(total_juros_pagos_credito))
 
     with col2:
-        st.metric("Rendimento Bruto Total da Aplicação", format_brl(rendimento_bruto_total_aplicacao, grouping=True))
-        st.metric("Imposto de Renda Retido", format_brl(ir_total_aplicacao, grouping=True))
-        st.metric("Rendimento Líquido Total", format_brl(rendimento_liquido_total_aplicacao, grouping=True))
+        st.metric("Rendimento Bruto Total da Aplicação", format_brl(rendimento_bruto_total_aplicacao))
+        st.metric("Imposto de Renda Retido", format_brl(ir_total_aplicacao))
+        st.metric("Rendimento Líquido Total", format_brl(rendimento_liquido_total_aplicacao))
 
     with col3:
-        st.metric("Ganho Líquido Total da Operação", format_brl(ganho_liquido_total_operacao, grouping=True))
+        st.metric("Ganho Líquido Total da Operação", format_brl(ganho_liquido_total_operacao))
 
     st.subheader("Resumo Financeiro Detalhado:")
-    # Alteração aqui: usando locale.currency
-    st.write(f"- **Juros Totais Pagos no Crédito:** {format_brl(total_juros_pagos_credito, grouping=True)}")
-    st.write(f"- **Rendimento Bruto Total da Aplicação:** {format_brl(rendimento_bruto_total_aplicacao, grouping=True)}")
-    st.write(f"- **Imposto de Renda Retido na Aplicação:** {format_brl(ir_total_aplicacao, grouping=True)}")
-    st.write(f"- **Rendimento Líquido Total da Aplicação:** {format_brl(rendimento_liquido_total_aplicacao, grouping=True)}")
-    st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{format_brl(capital_total_acumulado_aplicacao, grouping=True)}**")
-    st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{format_brl(ganho_liquido_total_operacao, grouping=True)}**")
+    st.write(f"- **Juros Totais Pagos no Crédito:** {format_brl(total_juros_pagos_credito)}")
+    st.write(f"- **Rendimento Bruto Total da Aplicação:** {format_brl(rendimento_bruto_total_aplicacao)}")
+    st.write(f"- **Imposto de Renda Retido na Aplicação:** {format_brl(ir_total_aplicacao)}")
+    st.write(f"- **Rendimento Líquido Total da Aplicação:** {format_brl(rendimento_liquido_total_aplicacao)}")
+    st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{format_brl(capital_total_acumulado_aplicacao)}**")
+    st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{format_brl(ganho_liquido_total_operacao)}**")
+
     # Lógica da Mensagem Final
     if ganho_liquido_total_operacao >= 0:
         st.success("🎉 Esta operação de crédito, considerando o rendimento da sua aplicação, resulta em um **ganho líquido total** para você!")
         st.info(f"""
-        💡 Você não apenas cobriu os juros e custos do crédito com sua aplicação, como também obteve um **ganho de R$ {ganho_liquido_total_operacao:,.2f}**!
+        💡 Você não apenas cobriu os juros e custos do crédito com sua aplicação, como também obteve um **ganho de {format_brl(ganho_liquido_total_operacao)}**!
         Isso demonstra a **vantagem de usar sua aplicação como garantia** para otimizar seus custos de crédito ao máximo.
         """)
     else:
