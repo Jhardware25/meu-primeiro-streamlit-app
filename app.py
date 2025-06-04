@@ -2,11 +2,23 @@ import streamlit as st
 import pandas as pd
 import numpy_financial as npf # Certifique-se de que numpy-financial está instalado: pip install numpy-financial
 import plotly.express as px
-import locale
 
-# Configura o locale para Português do Brasil
-# Isso deve ser feito ANTES de usar qualquer função de formatação de locale
-locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+# Função para formatar valores em Reais (R$) com padrão brasileiro
+def format_brl(value):
+    # Garante que o valor seja um número
+    try:
+        value = float(value)
+    except (ValueError, TypeError):
+        return "R$ --" # Ou outra mensagem de erro
+
+    # Formata o número com 2 casas decimais e separador de milhares americano (ponto como decimal)
+    formatted_value = f"{value:,.2f}"
+
+    # Inverte os separadores para o padrão brasileiro (vírgula como decimal, ponto como milhar)
+    # 1. Troca vírgulas por um caractere temporário (ex: 'X')
+    # 2. Troca pontos por vírgulas
+    # 3. Troca o caractere temporário por pontos
+    return f"R$ {formatted_value.replace(',', 'X').replace('.', ',').replace('X', '.')}"
 
 st.set_page_config(layout="wide")
 
@@ -183,26 +195,26 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     col1, col2, col3 = st.columns(3)
     with col1:
         # Alteração aqui: usando locale.currency
-        st.metric("Valor Líquido Recebido", locale.currency(valor_liquido_recebido, grouping=True))
-        st.metric("Parcela Mensal do Crédito", locale.currency(parcela_mensal_credito, grouping=True))
-        st.metric("Total de Juros Pagos no Crédito", locale.currency(total_juros_pagos_credito, grouping=True))
+        st.metric("Valor Líquido Recebido", format_brl(valor_liquido_recebido, grouping=True))
+        st.metric("Parcela Mensal do Crédito", format_brl(parcela_mensal_credito, grouping=True))
+        st.metric("Total de Juros Pagos no Crédito", format_brl(total_juros_pagos_credito, grouping=True))
 
     with col2:
-        st.metric("Rendimento Bruto Total da Aplicação", locale.currency(rendimento_bruto_total_aplicacao, grouping=True))
-        st.metric("Imposto de Renda Retido", locale.currency(ir_total_aplicacao, grouping=True))
-        st.metric("Rendimento Líquido Total", locale.currency(rendimento_liquido_total_aplicacao, grouping=True))
+        st.metric("Rendimento Bruto Total da Aplicação", format_brl(rendimento_bruto_total_aplicacao, grouping=True))
+        st.metric("Imposto de Renda Retido", format_brl(ir_total_aplicacao, grouping=True))
+        st.metric("Rendimento Líquido Total", format_brl(rendimento_liquido_total_aplicacao, grouping=True))
 
     with col3:
-        st.metric("Ganho Líquido Total da Operação", locale.currency(ganho_liquido_total_operacao, grouping=True))
+        st.metric("Ganho Líquido Total da Operação", format_brl(ganho_liquido_total_operacao, grouping=True))
 
     st.subheader("Resumo Financeiro Detalhado:")
     # Alteração aqui: usando locale.currency
-    st.write(f"- **Juros Totais Pagos no Crédito:** {locale.currency(total_juros_pagos_credito, grouping=True)}")
-    st.write(f"- **Rendimento Bruto Total da Aplicação:** {locale.currency(rendimento_bruto_total_aplicacao, grouping=True)}")
-    st.write(f"- **Imposto de Renda Retido na Aplicação:** {locale.currency(ir_total_aplicacao, grouping=True)}")
-    st.write(f"- **Rendimento Líquido Total da Aplicação:** {locale.currency(rendimento_liquido_total_aplicacao, grouping=True)}")
-    st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{locale.currency(capital_total_acumulado_aplicacao, grouping=True)}**")
-    st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{locale.currency(ganho_liquido_total_operacao, grouping=True)}**")
+    st.write(f"- **Juros Totais Pagos no Crédito:** {format_brl(total_juros_pagos_credito, grouping=True)}")
+    st.write(f"- **Rendimento Bruto Total da Aplicação:** {format_brl(rendimento_bruto_total_aplicacao, grouping=True)}")
+    st.write(f"- **Imposto de Renda Retido na Aplicação:** {format_brl(ir_total_aplicacao, grouping=True)}")
+    st.write(f"- **Rendimento Líquido Total da Aplicação:** {format_brl(rendimento_liquido_total_aplicacao, grouping=True)}")
+    st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{format_brl(capital_total_acumulado_aplicacao, grouping=True)}**")
+    st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{format_brl(ganho_liquido_total_operacao, grouping=True)}**")
     # Lógica da Mensagem Final
     if ganho_liquido_total_operacao >= 0:
         st.success("🎉 Esta operação de crédito, considerando o rendimento da sua aplicação, resulta em um **ganho líquido total** para você!")
