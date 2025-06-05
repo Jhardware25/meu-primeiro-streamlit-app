@@ -334,10 +334,13 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         st.plotly_chart(fig_fluxo, use_container_width=True)
 
     # --- NOVO BLOCO: GERAR RELATÓRIO PDF ---
+    # ... (código antes do botão "Download Relatório PDF") ...
+
     st.subheader("Gerar Relatório Detalhado")
     if st.button("Download Relatório PDF", key="btn_download_pdf"):
         try:
             from fpdf import FPDF
+            print("DEBUG: fpdf importado com sucesso.") # LINHA PARA ADICIONAR
             
             class PDF(FPDF):
                 def header(self):
@@ -361,76 +364,27 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
                     self.ln(4)
 
             pdf = PDF()
+            print("DEBUG: Objeto PDF criado.") # LINHA PARA ADICIONAR
             pdf.add_page()
-            # Adicionar a fonte baixada (Certifique-se de ter o arquivo 'NotoSans-Regular.ttf' na mesma pasta!)
-            # Você precisará baixar essas fontes (Bold, Italic, Regular) e colocá-las na pasta do seu app.py
+            
+            # Adicionar a fonte baixada (Certifique-se de ter os arquivos 'NotoSans-Regular.ttf' na mesma pasta!)
+            print("DEBUG: Tentando adicionar fontes...") # LINHA PARA ADICIONAR
             pdf.add_font('NotoSans', '', 'NotoSans-Regular.ttf', uni=True)
             pdf.add_font('NotoSans', 'B', 'NotoSans-Bold.ttf', uni=True) 
             pdf.add_font('NotoSans', 'I', 'NotoSans-Italic.ttf', uni=True) 
+            print("DEBUG: Fontes adicionadas com sucesso.") # LINHA PARA ADICIONAR
 
             pdf.set_font('NotoSans', '', 10)
 
-            # Conteúdo do PDF
-            pdf.chapter_title("Resumo da Operação:")
-            resumo_operacao_pdf = f"""
-            - Valor do Crédito Solicitado: {format_brl(valor_credito)}
-            - Prazo do Crédito: {prazo_credito_meses} meses
-            - Taxa de Juros do Crédito: {taxa_juros_pactuada_input:.2f}% a.m. ({tipo_taxa_credito})
-            - IOF Total: {format_brl(iof_total)}
-            - TAC: {format_brl(tac_valor)}
-            - Seguro Prestamista: {format_brl(valor_prestamista)}
-            - Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido)}
-            - Parcela Mensal do Crédito: {format_brl(parcela_mensal_credito)}
-            """
-            if not pd.isna(cet_anual):
-                resumo_operacao_pdf += f"- Custo Efetivo Total (CET) Anual: {cet_anual:.2f}% a.a."
-            else:
-                resumo_operacao_pdf += "- Custo Efetivo Total (CET) Anual: Não Calculado"
-            
-            pdf.chapter_body(resumo_operacao_pdf)
-            pdf.ln(5)
+            # Conteúdo do PDF (o restante do seu código de preenchimento do PDF)
+            # ... Seu código para adicionar títulos, corpo, tabela de amortização ...
 
-            pdf.chapter_title("Resumo da Aplicação e Ganhos:")
-            pdf.chapter_body(f"""
-            - Valor da Aplicação em Garantia: {format_brl(valor_aplicacao)}
-            - Taxa de Rendimento da Aplicação: {taxa_rendimento_aplicacao_input:.2f}% a.m.
-            - Rendimento Líquido Total da Aplicação: {format_brl(rendimento_liquido_total_aplicacao)}
-            - Juros Totais Pagos no Crédito: {format_brl(total_juros_pagos_credito)}
-            - Ganho Líquido Total da Operação: {format_brl(ganho_liquido_total_operacao)}
-            """)
+            print("DEBUG: Conteúdo do PDF preenchido.") # LINHA PARA ADICIONAR
 
-            # Tabela de Amortização (para o PDF) - Opcional, mas muito útil
-            pdf.add_page()
-            pdf.chapter_title("Tabela de Amortização do Crédito:")
-            # Cabeçalhos da tabela
-            col_widths = [15, 30, 30, 30, 30, 35] # Mes, Saldo Inicial, Juros, Amort, Parcela, Saldo Final
-            headers = ["Mês", "Saldo Ini.", "Juros", "Amort.", "Parcela", "Saldo Fim"]
-
-            pdf.set_font('NotoSans', 'B', 8)
-            for i, header in enumerate(headers):
-                pdf.cell(col_widths[i], 7, header, 1, 0, 'C')
-            pdf.ln()
-
-            pdf.set_font('NotoSans', '', 8)
-            saldo_atual_credito_tabela = valor_total_para_parcela_calculo # Começa com o valor total que gerou a parcela
-            
-            for mes_idx in range(1, prazo_credito_meses + 1):
-                juros_mes_credito_tabela = saldo_atual_credito_tabela * taxa_juros_credito_efetiva_mensal
-                amortizacao_mes_tabela = parcela_mensal_credito - juros_mes_credito_tabela
-                saldo_final_credito_tabela = max(0, saldo_atual_credito_tabela - amortizacao_mes_tabela)
-
-                pdf.cell(col_widths[0], 6, str(mes_idx), 1, 0, 'C')
-                pdf.cell(col_widths[1], 6, format_brl(saldo_atual_credito_tabela), 1, 0, 'R')
-                pdf.cell(col_widths[2], 6, format_brl(juros_mes_credito_tabela), 1, 0, 'R')
-                pdf.cell(col_widths[3], 6, format_brl(amortizacao_mes_tabela), 1, 0, 'R')
-                pdf.cell(col_widths[4], 6, format_brl(parcela_mensal_credito), 1, 0, 'R')
-                pdf.cell(col_widths[5], 6, format_brl(saldo_final_credito_tabela), 1, 0, 'R')
-                pdf.ln()
-                
-                saldo_atual_credito_tabela = saldo_final_credito_tabela # Atualiza para o próximo mês
-
-
+            print("DEBUG: Tentando gerar a saída do PDF...") # LINHA PARA ADICIONAR
             pdf_output = pdf.output(dest='S').encode('latin-1')
+            print(f"DEBUG: Saída do PDF gerada. Tamanho: {len(pdf_output)} bytes.") # LINHA PARA ADICIONAR
+
             st.download_button(
                 label="Clique para Baixar o PDF",
                 data=pdf_output,
@@ -438,8 +392,15 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
                 mime="application/pdf"
             )
         except Exception as e:
-            st.error(f"Erro ao gerar o PDF: {e}. Certifique-se de ter a biblioteca 'fpdf2' instalada e os arquivos de fonte (NotoSans-Regular.ttf, NotoSans-Bold.ttf, NotoSans-Italic.ttf) na mesma pasta do app.py.")
-            st.warning("Se o erro persistir, verifique os logs do Streamlit Cloud ('Manage app' -> 'View logs').")
+            # Manter st.error para ver se aparece na tela, mas confiar mais nos prints
+            st.error(f"Erro ao gerar o PDF: {e}") 
+            st.info(f"Tipo de erro: {type(e).__name__}") 
+            st.warning("Verifique os logs do Streamlit Cloud para mais detalhes.")
+            print(f"FATAL ERROR: Exceção capturada durante a geração do PDF: {e}") # LINHA PARA ADICIONAR
+            print(f"FATAL ERROR: Tipo da exceção: {type(e).__name__}") # LINHA PARA ADICIONAR
+            print(f"FATAL ERROR: Detalhes do erro: {e}") # LINHA PARA ADICIONAR
+
+# ... (restante do código) ...
 
 
     # --- FIM DO BLOCO if st.button ---
