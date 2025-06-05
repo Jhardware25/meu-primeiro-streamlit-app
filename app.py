@@ -340,64 +340,32 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     if st.button("Download Relatório PDF", key="btn_download_pdf"):
         try:
             from fpdf import FPDF
-            print("DEBUG: fpdf importado com sucesso.") # LINHA PARA ADICIONAR
             
-            class PDF(FPDF):
-                def header(self):
-                    self.set_font('NotoSans', 'B', 12)
-                    self.cell(0, 10, 'Simulador de Crédito com Garantia de Aplicação Financeira', 0, 1, 'C')
-                    self.ln(10)
-
-                def footer(self):
-                    self.set_y(-15)
-                    self.set_font('NotoSans', 'I', 8)
-                    self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', 0, 0, 'C')
-
-                def chapter_title(self, title):
-                    self.set_font('NotoSans', 'B', 10)
-                    self.cell(0, 6, title, 0, 1, 'L', 0)
-                    self.ln(4)
-
-                def chapter_body(self, body):
-                    self.set_font('NotoSans', '', 10)
-                    self.multi_cell(0, 5, body)
-                    self.ln(4)
-
-            pdf = PDF()
-            print("DEBUG: Objeto PDF criado.") # LINHA PARA ADICIONAR
+            # --- Início do Bloco de Teste Simples de PDF ---
+            pdf = FPDF() # Cria um objeto FPDF simples
             pdf.add_page()
             
-            # Adicionar a fonte baixada (Certifique-se de ter os arquivos 'NotoSans-Regular.ttf' na mesma pasta!)
-            print("DEBUG: Tentando adicionar fontes...") # LINHA PARA ADICIONAR
+            # Tenta adicionar a fonte Noto Sans
+            # CERTIFIQUE-SE QUE 'NotoSans-Regular.ttf' ESTÁ NA MESMA PASTA DO app.py E NO GITHUB
             pdf.add_font('NotoSans', '', 'NotoSans-Regular.ttf', uni=True)
-            pdf.add_font('NotoSans', 'B', 'NotoSans-Bold.ttf', uni=True) 
-            pdf.add_font('NotoSans', 'I', 'NotoSans-Italic.ttf', uni=True) 
-            print("DEBUG: Fontes adicionadas com sucesso.") # LINHA PARA ADICIONAR
+            pdf.set_font('NotoSans', '', 12) # Usa a fonte adicionada
+            
+            pdf.cell(0, 10, 'Olá, este é um teste de PDF!', 0, 1, 'C')
+            pdf.cell(0, 10, 'Se você vir este PDF, as fontes e o fpdf2 estão funcionando.', 0, 1, 'C')
+            # --- Fim do Bloco de Teste Simples de PDF ---
 
-            pdf.set_font('NotoSans', '', 10)
-
-            # Conteúdo do PDF (o restante do seu código de preenchimento do PDF)
-            # ... Seu código para adicionar títulos, corpo, tabela de amortização ...
-
-            print("DEBUG: Conteúdo do PDF preenchido.") # LINHA PARA ADICIONAR
-
-            print("DEBUG: Tentando gerar a saída do PDF...") # LINHA PARA ADICIONAR
             pdf_output = pdf.output(dest='S').encode('latin-1')
-            print(f"DEBUG: Saída do PDF gerada. Tamanho: {len(pdf_output)} bytes.") # LINHA PARA ADICIONAR
-
+            
             st.download_button(
                 label="Clique para Baixar o PDF",
                 data=pdf_output,
-                file_name="Relatorio_Simulacao_Credito.pdf",
+                file_name="teste_pdf.pdf",
                 mime="application/pdf"
             )
         except Exception as e:
-            # Manter st.error para ver se aparece na tela, mas confiar mais nos prints
-            # Removemos os prints DEBUG aqui para focar na exibição na tela
-            # e garantir que a mensagem de erro seja a mais clara possível.
-            st.error("❌ Ocorreu um erro ao gerar o PDF!")
-            st.exception(e) # Esta linha é a mais importante para vermos o traceback completo.
-            st.warning("Verifique se as fontes NotoSans estão na mesma pasta do app.py e se o fpdf2 está no requirements.txt.")
+            st.error("❌ Ocorreu um erro ao gerar o PDF de teste!")
+            st.exception(e) # Exibe o traceback completo
+            st.warning("Isso indica um problema mais fundamental com a biblioteca fpdf2 ou as fontes no ambiente do Streamlit Cloud.")
 
 # ... (restante do código) ...
 
