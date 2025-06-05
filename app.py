@@ -7,19 +7,12 @@ st.set_page_config(layout="wide")
 
 # Função para formatar valores em Reais (R$) com padrão brasileiro
 def format_brl(value):
-    # Garante que o valor seja um número
     try:
         value = float(value)
     except (ValueError, TypeError):
-        return "R$ --" # Ou outra mensagem de erro
+        return "R$ --"
     
-    # Formata o número com 2 casas decimais e separador de milhares americano (ponto como decimal)
     formatted_value = f"{value:,.2f}"
-    
-    # Inverte os separadores para o padrão brasileiro (vírgula como decimal, ponto como milhar)
-    # 1. Troca vírgulas por um caractere temporário (ex: 'X')
-    # 2. Troca pontos por vírgulas
-    # 3. Troca o caractere temporário por pontos
     return f"R$ {formatted_value.replace(',', 'X').replace('.', ',').replace('X', '.')}"
 
 
@@ -35,11 +28,10 @@ valor_credito = st.number_input(
     step=1000.0,
     format="%.2f"
 )
-# Prazo máximo limitado a 60 meses
 prazo_credito_meses = st.slider(
     "Prazo do Crédito (meses):",
     min_value=1,
-    max_value=60, # Prazo máximo alterado para 60 meses
+    max_value=60,
     value=60,
     step=1
 )
@@ -89,6 +81,40 @@ tac_percentual = st.number_input(
     format="%.2f"
 )
 
+# --- NOVO BLOCO: SEGURO PRESTAMISTA ---
+st.header("Seguro Prestamista:")
+opcao_prestamista = st.radio(
+    "Incluir Seguro Prestamista?",
+    ("Não incluir", "Calcular por Percentual", "Informar Valor Manualmente"),
+    index=0 # Padrão: Não incluir
+)
+
+percentual_prestamista = 0.0
+valor_prestamista = 0.0
+
+if opcao_prestamista == "Calcular por Percentual":
+    percentual_prestamista = st.slider(
+        "Percentual do Seguro Prestamista (% do valor do crédito):",
+        min_value=5.0,
+        max_value=10.0,
+        value=7.5, # Um valor médio entre 5% e 10%
+        step=0.1,
+        format="%.1f",
+        help="Percentual do seguro prestamista sobre o valor do crédito, ajustado pela idade dos sócios."
+    )
+    valor_prestamista = valor_credito * (percentual_prestamista / 100)
+    st.info(f"Valor do Seguro Prestamista (estimado): **{format_brl(valor_prestamista)}**")
+elif opcao_prestamista == "Informar Valor Manualmente":
+    valor_prestamista = st.number_input(
+        "Valor do Seguro Prestamista (R$):",
+        min_value=0.0,
+        value=0.0,
+        step=100.0,
+        format="%.2f"
+    )
+# --- FIM NOVO BLOCO: SEGURO PRESTAMISTA ---
+
+
 st.header("Dados da Aplicação em Garantia:")
 valor_aplicacao = st.number_input(
     "Valor da Aplicação em Garantia (R$):",
@@ -126,7 +152,22 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     # 1. CÁLCULOS INICIAIS
     iof_total = valor_credito * (iof_percentual / 100)
     tac_valor = valor_credito * (tac_percentual / 100)
-    valor_liquido_recebido = valor_credito - iof_total - tac_valor
+    
+    # *** LÓGICA DO SEGURO PRESTAMISTA ***
+    valor_total_para_parcela_calculo = valor_credito # Base para a parcela mensal
+    custos_iniciais_para_liquido_recebido = iof_total + tac_valor # Base para o valor líquido recebido
+
+    if tipo_taxa_credito == "Prefixada":
+        # Seguro Prestamista FINANCIADO: Soma ao valor que será parcelado
+        valor_total_para_parcela_calculo += valor_prestamista
+        # O valor do seguro também é um custo inicial que o cliente "não recebe"
+        custos_iniciais_para_liquido_recebido += valor_prestamista 
+    else: # Pós-fixada (TR + Taxa)
+        # Seguro Prestamista PAGO À VISTA: Desconta do valor líquido recebido
+        custos_iniciais_para_liquido_recebido += valor_prestamista
+        # A base para a parcela do crédito continua sendo o valor_credito inicial, não o valor com seguro embutido
+        
+    valor_liquido_recebido = valor_credito - custos_iniciais_para_liquido_recebido
 
     # 2. CÁLCULO DA TAXA DE JUROS EFETIVA DO CRÉDITO
     if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
@@ -140,13 +181,12 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         total_juros_pagos_credito = 0.0
     else:
         try:
-            # npf.pmt retorna um valor negativo por convenção, então multiplicamos por -1
             parcela_mensal_credito = npf.pmt(
                 taxa_juros_credito_efetiva_mensal,
                 prazo_credito_meses,
-                -valor_credito
+                -valor_total_para_parcela_calculo # Usa o valor ajustado para cálculo da parcela
             )
-            total_juros_pagos_credito = (parcela_mensal_credito * prazo_credito_meses) - valor_credito
+            total_juros_pagos_credito = (parcela_mensal_credito * prazo_credito_meses) - valor_total_para_parcela_calculo
         except Exception as e:
             st.error(f"Erro no cálculo da parcela do crédito: {e}. Verifique as taxas e prazos.")
             parcela_mensal_credito = 0.0
@@ -161,9 +201,20 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     # 5. CÁLCULO DO GANHO LÍQUIDO TOTAL
     ganho_liquido_total_operacao = rendimento_liquido_total_aplicacao - total_juros_pagos_credito
 
-    # 6. GERAÇÃO DOS DADOS MENSAIS PARA OS GRÁFICOS
+    # 6. CÁLCULO DO CET (Custo Efetivo Total)
+    # Fluxo de caixa para o cálculo do CET deve incluir TODOS os custos iniciais e as parcelas
+    # O valor_liquido_recebido já reflete os custos iniciais (IOF, TAC, Prestamista).
+    fluxo_caixa_cet_cliente = [valor_liquido_recebido] + [-parcela_mensal_credito] * prazo_credito_meses
+
+    try:
+        cet_mensal = npf.irr(fluxo_caixa_cet_cliente)
+        cet_anual = ((1 + cet_mensal)**12 - 1) * 100 # Em % ao ano
+    except Exception:
+        cet_anual = float('nan') # Usar NaN para indicar que não foi possível calcular
+
+    # 7. GERAÇÃO DOS DADOS MENSAIS PARA OS GRÁFICOS
     historico = []
-    saldo_atual_credito = valor_credito
+    saldo_atual_credito = valor_credito # Começa com o valor_credito original para o balanço do crédito
     saldo_atual_aplicacao = valor_aplicacao
 
     for mes_idx in range(1, prazo_credito_meses + 1):
@@ -171,7 +222,6 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         juros_mes_credito = saldo_atual_credito * taxa_juros_credito_efetiva_mensal
         amortizacao_mes = parcela_mensal_credito - juros_mes_credito
         
-        # Garante que o saldo não fique negativo devido a pequenas imprecisões de ponto flutuante no último mês
         saldo_atual_credito = max(0, saldo_atual_credito - amortizacao_mes)
 
         # Aplicação
@@ -180,7 +230,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
         historico.append({
             'Mês': mes_idx,
-            'Saldo Devedor do Crédito (R$)': saldo_atual_credito, # Já tratado com max(0, ...)
+            'Saldo Devedor do Crédito (R$)': saldo_atual_credito,
             'Parcela Mensal do Crédito (R$)': parcela_mensal_credito,
             'Rendimento Líquido Mensal da Aplicação (R$)': rendimento_mes_bruto * (1 - ir_aliquota),
             'Saldo da Aplicação em Garantia (R$)': saldo_atual_aplicacao
@@ -209,6 +259,11 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
     with col3:
         st.metric("Ganho Líquido Total da Operação", format_brl(ganho_liquido_total_operacao))
+        if not pd.isna(cet_anual): # Só exibe se o CET foi calculado
+            st.metric("Custo Efetivo Total (CET) Anual", f"{cet_anual:.2f}% a.a.")
+        else:
+            st.metric("Custo Efetivo Total (CET) Anual", "Não Calculado")
+
 
     st.subheader("Resumo Financeiro Detalhado:")
     st.write(f"- **Juros Totais Pagos no Crédito:** {format_brl(total_juros_pagos_credito)}")
@@ -217,6 +272,16 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     st.write(f"- **Rendimento Líquido Total da Aplicação:** {format_brl(rendimento_liquido_total_aplicacao)}")
     st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{format_brl(capital_total_acumulado_aplicacao)}**")
     st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{format_brl(ganho_liquido_total_operacao)}**")
+
+    # Adiciona o seguro prestamista no resumo detalhado
+    if valor_prestamista > 0:
+        st.write(f"- **Seguro Prestamista:** {format_brl(valor_prestamista)}")
+    
+    if not pd.isna(cet_anual):
+        st.write(f"- **Custo Efetivo Total (CET) Anual:** **{cet_anual:.2f}% a.a.**")
+    else:
+        st.write("- **Custo Efetivo Total (CET) Anual:** Não foi possível calcular. Verifique os parâmetros da operação.")
+
 
     # Lógica da Mensagem Final
     if ganho_liquido_total_operacao >= 0:
@@ -232,7 +297,6 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
     # --- Exibição dos Gráficos ---
     st.subheader("📊 Evolução Financeira ao Longo do Contrato")
-    # Verificação se os DataFrames não estão vazios para evitar erros de Plotly
     if not df_evolucao.empty:
         fig_saldo = px.line(df_evolucao, x='Mês', y=['Saldo Devedor do Crédito (R$)', 'Saldo da Aplicação em Garantia (R$)'],
                             title='Evolução do Saldo Devedor do Crédito vs. Saldo da Aplicação em Garantia',
@@ -269,8 +333,116 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         fig_fluxo.update_yaxes(showgrid=True, zeroline=True)
         st.plotly_chart(fig_fluxo, use_container_width=True)
 
-    # --- FIM DA SEÇÃO DE EXIBIÇÃO DOS RESULTADOS ---
+    # --- NOVO BLOCO: GERAR RELATÓRIO PDF ---
+    st.subheader("Gerar Relatório Detalhado")
+    if st.button("Download Relatório PDF", key="btn_download_pdf"):
+        try:
+            from fpdf import FPDF
+            
+            class PDF(FPDF):
+                def header(self):
+                    self.set_font('NotoSans', 'B', 12)
+                    self.cell(0, 10, 'Simulador de Crédito com Garantia de Aplicação Financeira', 0, 1, 'C')
+                    self.ln(10)
 
+                def footer(self):
+                    self.set_y(-15)
+                    self.set_font('NotoSans', 'I', 8)
+                    self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', 0, 0, 'C')
+
+                def chapter_title(self, title):
+                    self.set_font('NotoSans', 'B', 10)
+                    self.cell(0, 6, title, 0, 1, 'L', 0)
+                    self.ln(4)
+
+                def chapter_body(self, body):
+                    self.set_font('NotoSans', '', 10)
+                    self.multi_cell(0, 5, body)
+                    self.ln(4)
+
+            pdf = PDF()
+            pdf.add_page()
+            # Adicionar a fonte baixada (Certifique-se de ter o arquivo 'NotoSans-Regular.ttf' na mesma pasta!)
+            # Você precisará baixar essas fontes (Bold, Italic, Regular) e colocá-las na pasta do seu app.py
+            pdf.add_font('NotoSans', '', 'NotoSans-Regular.ttf', uni=True)
+            pdf.add_font('NotoSans', 'B', 'NotoSans-Bold.ttf', uni=True) 
+            pdf.add_font('NotoSans', 'I', 'NotoSans-Italic.ttf', uni=True) 
+
+            pdf.set_font('NotoSans', '', 10)
+
+            # Conteúdo do PDF
+            pdf.chapter_title("Resumo da Operação:")
+            resumo_operacao_pdf = f"""
+            - Valor do Crédito Solicitado: {format_brl(valor_credito)}
+            - Prazo do Crédito: {prazo_credito_meses} meses
+            - Taxa de Juros do Crédito: {taxa_juros_pactuada_input:.2f}% a.m. ({tipo_taxa_credito})
+            - IOF Total: {format_brl(iof_total)}
+            - TAC: {format_brl(tac_valor)}
+            - Seguro Prestamista: {format_brl(valor_prestamista)}
+            - Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido)}
+            - Parcela Mensal do Crédito: {format_brl(parcela_mensal_credito)}
+            """
+            if not pd.isna(cet_anual):
+                resumo_operacao_pdf += f"- Custo Efetivo Total (CET) Anual: {cet_anual:.2f}% a.a."
+            else:
+                resumo_operacao_pdf += "- Custo Efetivo Total (CET) Anual: Não Calculado"
+            
+            pdf.chapter_body(resumo_operacao_pdf)
+            pdf.ln(5)
+
+            pdf.chapter_title("Resumo da Aplicação e Ganhos:")
+            pdf.chapter_body(f"""
+            - Valor da Aplicação em Garantia: {format_brl(valor_aplicacao)}
+            - Taxa de Rendimento da Aplicação: {taxa_rendimento_aplicacao_input:.2f}% a.m.
+            - Rendimento Líquido Total da Aplicação: {format_brl(rendimento_liquido_total_aplicacao)}
+            - Juros Totais Pagos no Crédito: {format_brl(total_juros_pagos_credito)}
+            - Ganho Líquido Total da Operação: {format_brl(ganho_liquido_total_operacao)}
+            """)
+
+            # Tabela de Amortização (para o PDF) - Opcional, mas muito útil
+            pdf.add_page()
+            pdf.chapter_title("Tabela de Amortização do Crédito:")
+            # Cabeçalhos da tabela
+            col_widths = [15, 30, 30, 30, 30, 35] # Mes, Saldo Inicial, Juros, Amort, Parcela, Saldo Final
+            headers = ["Mês", "Saldo Ini.", "Juros", "Amort.", "Parcela", "Saldo Fim"]
+
+            pdf.set_font('NotoSans', 'B', 8)
+            for i, header in enumerate(headers):
+                pdf.cell(col_widths[i], 7, header, 1, 0, 'C')
+            pdf.ln()
+
+            pdf.set_font('NotoSans', '', 8)
+            saldo_atual_credito_tabela = valor_total_para_parcela_calculo # Começa com o valor total que gerou a parcela
+            
+            for mes_idx in range(1, prazo_credito_meses + 1):
+                juros_mes_credito_tabela = saldo_atual_credito_tabela * taxa_juros_credito_efetiva_mensal
+                amortizacao_mes_tabela = parcela_mensal_credito - juros_mes_credito_tabela
+                saldo_final_credito_tabela = max(0, saldo_atual_credito_tabela - amortizacao_mes_tabela)
+
+                pdf.cell(col_widths[0], 6, str(mes_idx), 1, 0, 'C')
+                pdf.cell(col_widths[1], 6, format_brl(saldo_atual_credito_tabela), 1, 0, 'R')
+                pdf.cell(col_widths[2], 6, format_brl(juros_mes_credito_tabela), 1, 0, 'R')
+                pdf.cell(col_widths[3], 6, format_brl(amortizacao_mes_tabela), 1, 0, 'R')
+                pdf.cell(col_widths[4], 6, format_brl(parcela_mensal_credito), 1, 0, 'R')
+                pdf.cell(col_widths[5], 6, format_brl(saldo_final_credito_tabela), 1, 0, 'R')
+                pdf.ln()
+                
+                saldo_atual_credito_tabela = saldo_final_credito_tabela # Atualiza para o próximo mês
+
+
+            pdf_output = pdf.output(dest='S').encode('latin-1')
+            st.download_button(
+                label="Clique para Baixar o PDF",
+                data=pdf_output,
+                file_name="Relatorio_Simulacao_Credito.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"Erro ao gerar o PDF: {e}. Certifique-se de ter a biblioteca 'fpdf2' instalada e os arquivos de fonte (NotoSans-Regular.ttf, NotoSans-Bold.ttf, NotoSans-Italic.ttf) na mesma pasta do app.py.")
+            st.warning("Se o erro persistir, verifique os logs do Streamlit Cloud ('Manage app' -> 'View logs').")
+
+
+    # --- FIM DO BLOCO if st.button ---
     st.markdown("---")
     st.subheader("Observações Importantes:")
     st.write("""
@@ -280,5 +452,3 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     - A **TR (Taxa Referencial)** é uma taxa de juros que pode variar. Para simulações futuras, considere que seu valor pode mudar.
     - Esta é uma simulação e os valores reais podem variar. Consulte sempre um profissional financeiro.
     """)
-
-# --- FIM DO BLOCO if st.button ---
