@@ -152,13 +152,24 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
     # 1. CÁLCULOS INICIAIS
     iof_total = valor_credito * (iof_percentual / 100)
-    tac_valor = valor_credito * (tac_percentual / 100)
+
+    # --- INÍCIO DA ALTERAÇÃO PARA A TAC ---
+    # Calcula o valor da TAC baseado no percentual
+    tac_valor_calculado = valor_credito * (tac_percentual / 100)
+
+    # Define o teto máximo para a TAC
+    teto_tac = 10000.00
+
+    # Aplica a regra: se o valor calculado for maior que o teto, usa o teto
+    tac_valor = min(tac_valor_calculado, teto_tac)
+
+    # --- FIM DA ALTERAÇÃO PARA A TAC ---
     
     # *** LÓGICA DO SEGURO PRESTAMISTA ***
     valor_total_para_parcela_calculo = valor_credito # Base para a parcela mensal
     custos_iniciais_para_liquido_recebido = iof_total + tac_valor # Base para o valor líquido recebido
 
-    if tipo_taxa_credito == "Prefixada":
+    if tipo_taxa_credito == "Prefixada": 
         # Seguro Prestamista FINANCIADO: Soma ao valor que será parcelado
         valor_total_para_parcela_calculo += valor_prestamista
         # O valor do seguro também é um custo inicial que o cliente "não recebe"
