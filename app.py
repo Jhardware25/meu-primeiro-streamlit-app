@@ -284,14 +284,14 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     st.write(f"- **Rendimento Líquido Total da Aplicação:** {format_brl(rendimento_liquido_total_aplicacao)}")
     st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{format_brl(capital_total_acumulado_aplicacao)}**")
     st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{format_brl(ganho_liquido_total_operacao)}**")
-    st.write(f"Tarifa de Abertura de Crédito (TAC): **{format_brl(tac_valor)}**")
+    st.write(f"- **Tarifa de Abertura de Crédito (TAC):** {format_brl(tac_valor)}")
     
     # Adiciona o seguro prestamista no resumo detalhado
     if valor_prestamista > 0:
         st.write(f"- **Seguro Prestamista:** {format_brl(valor_prestamista)}")
     
     if not pd.isna(cet_anual):
-        st.write(f"- **Custo Efetivo Total (CET) Anual:** **{cet_anual:.2f}% a.a.**")
+        st.write(f"- **Custo Efetivo Total (CET) Anual:** {cet_anual:.2f}% a.a.g")
     else:
         st.write("- **Custo Efetivo Total (CET) Anual:** Não foi possível calcular. Verifique os parâmetros da operação.")
 
