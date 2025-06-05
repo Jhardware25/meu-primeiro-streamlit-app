@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy_financial as npf
 import plotly.express as px
+import base64
 
 st.set_page_config(layout="wide")
 
@@ -336,37 +337,64 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     # --- NOVO BLOCO: GERAR RELATÓRIO PDF ---
     # ... (código antes do botão "Download Relatório PDF") ...
 
+    import base64 # Adicione esta linha no TOPO do seu app.py, junto com os outros imports
+
+# ... (restante do seu app.py) ...
+
     st.subheader("Gerar Relatório Detalhado")
+    st.info("Status Atual: Pronto para gerar PDF. Clique no botão.") # Mensagem de status inicial
+
     if st.button("Download Relatório PDF", key="btn_download_pdf"):
+        st.info("Status Atual: Botão clicado. Iniciando tentativa de geração de PDF...") # Confirma clique
         try:
             from fpdf import FPDF
             
-            # --- Início do Bloco de Teste Simples de PDF ---
-            pdf = FPDF() # Cria um objeto FPDF simples
+            pdf = FPDF() 
             pdf.add_page()
             
-            # Tenta adicionar a fonte Noto Sans
-            # CERTIFIQUE-SE QUE 'NotoSans-Regular.ttf' ESTÁ NA MESMA PASTA DO app.py E NO GITHUB
-            pdf.add_font('NotoSans', '', 'NotoSans-Regular.ttf', uni=True)
-            pdf.set_font('NotoSans', '', 12) # Usa a fonte adicionada
+            # --- Tenta adicionar a fonte Noto Sans com tratamento de erro mais específico ---
+            try:
+                # CERTIFIQUE-SE QUE 'NotoSans-Regular.ttf' ESTÁ NA MESMA PASTA DO app.py E NO GITHUB
+                pdf.add_font('NotoSans', '', 'NotoSans-Regular.ttf', uni=True)
+                pdf.set_font('NotoSans', '', 12)
+                st.success("Status Atual: Fonte 'NotoSans' carregada com sucesso!") # Confirma carregamento da fonte
+            except Exception as font_error:
+                st.error(f"❌ Erro CRÍTICO ao carregar a fonte: {font_error}")
+                st.exception(font_error)
+                st.warning("O PDF não pode ser gerado sem a fonte. Verifique o nome do arquivo da fonte e se ele está no GitHub.")
+                st.stop() # Interrompe a execução para exibir o erro da fonte
             
+            # --- Conteúdo do PDF de teste ---
             pdf.cell(0, 10, 'Olá, este é um teste de PDF!', 0, 1, 'C')
             pdf.cell(0, 10, 'Se você vir este PDF, as fontes e o fpdf2 estão funcionando.', 0, 1, 'C')
-            # --- Fim do Bloco de Teste Simples de PDF ---
-
-            pdf_output = pdf.output(dest='S').encode('latin-1')
             
+            st.info("Status Atual: Conteúdo básico adicionado ao PDF.") # Confirma adição de conteúdo
+
+            # --- Gera o output do PDF ---
+            pdf_output_bytes = pdf.output(dest='S').encode('latin-1')
+            st.success(f"Status Atual: PDF gerado como bytes. Tamanho: {len(pdf_output_bytes)} bytes.") # Confirma geração do output
+
+            # --- Tenta com st.download_button ---
             st.download_button(
-                label="Clique para Baixar o PDF",
-                data=pdf_output,
-                file_name="teste_pdf.pdf",
+                label="Clique para Baixar o PDF (Botão Streamlit)",
+                data=pdf_output_bytes,
+                file_name="teste_pdf_streamlit.pdf",
                 mime="application/pdf"
             )
-        except Exception as e:
-            st.error("❌ Ocorreu um erro ao gerar o PDF de teste!")
-            st.exception(e) # Exibe o traceback completo
-            st.warning("Isso indica um problema mais fundamental com a biblioteca fpdf2 ou as fontes no ambiente do Streamlit Cloud.")
+            st.info("Status Atual: Botão de download do Streamlit criado.")
 
+            # --- Tenta com link Base64 (Alternativo) ---
+            b64_pdf = base64.b64encode(pdf_output_bytes).decode('latin-1')
+            href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="teste_pdf_base64.pdf">Clique para Baixar o PDF (Link Alternativo - Mais confiável)</a>'
+            st.markdown(href, unsafe_allow_html=True)
+            st.info("Status Atual: Link de download alternativo criado.")
+
+        except Exception as e:
+            st.error("❌ Ocorreu um erro INESPERADO ao gerar o PDF!")
+            st.exception(e) # Exibe o traceback completo
+            st.warning("Isso indica um problema mais fundamental. Por favor, entre em contato com o suporte ou verifique a aba 'Activity' no Streamlit Cloud.")
+            
+        st.success("Status: Processo de geração de PDF finalizado.") # Mensagem final de processo concluído
 # ... (restante do código) ...
 
 
