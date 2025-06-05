@@ -393,12 +393,11 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
             )
         except Exception as e:
             # Manter st.error para ver se aparece na tela, mas confiar mais nos prints
-            st.error(f"Erro ao gerar o PDF: {e}") 
-            st.info(f"Tipo de erro: {type(e).__name__}") 
-            st.warning("Verifique os logs do Streamlit Cloud para mais detalhes.")
-            print(f"FATAL ERROR: Exceção capturada durante a geração do PDF: {e}") # LINHA PARA ADICIONAR
-            print(f"FATAL ERROR: Tipo da exceção: {type(e).__name__}") # LINHA PARA ADICIONAR
-            print(f"FATAL ERROR: Detalhes do erro: {e}") # LINHA PARA ADICIONAR
+            # Removemos os prints DEBUG aqui para focar na exibição na tela
+            # e garantir que a mensagem de erro seja a mais clara possível.
+            st.error("❌ Ocorreu um erro ao gerar o PDF!")
+            st.exception(e) # Esta linha é a mais importante para vermos o traceback completo.
+            st.warning("Verifique se as fontes NotoSans estão na mesma pasta do app.py e se o fpdf2 está no requirements.txt.")
 
 # ... (restante do código) ...
 
