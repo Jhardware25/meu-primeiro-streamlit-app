@@ -4,7 +4,7 @@ import numpy_financial as npf
 import plotly.express as px
 import base64
 import locale # Certifique-se que esta linha está no TOPO do seu app.py
-locale.setlocale(locale.LC_ALL, 'Portuguese_Brazil.1252')
+locale.setlocale(locale.LC_ALL, '')
 
 def format_brl(value):
     """Formata um valor numérico para o padrão monetário brasileiro (R$ X.XXX,XX)."""
