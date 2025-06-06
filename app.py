@@ -283,7 +283,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
     with col3:
         st.metric("Ganho Líquido Total da Operação", format_brl(ganho_liquido_total_operacao))
         if not pd.isna(cet_anual): # Só exibe se o CET foi calculado
-            st.metric("Custo Efetivo Total (CET) Anual",format_percent(cet_anual))
+            st.metric("Custo Efetivo Total (CET) Anual",f"{format_percent(cet_anual)} a.a.")
             
         else: 
             st.metric("Custo Efetivo Total (CET) Anual", "Não Calculado")
