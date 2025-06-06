@@ -3,17 +3,17 @@ import pandas as pd
 import numpy_financial as npf
 import plotly.express as px
 import base64
-import locale # Certifique-se que esta linha está no TOPO do seu app.py
-locale.setlocale(locale.LC_ALL, '')
 
 def format_brl(value):
     """Formata um valor numérico para o padrão monetário brasileiro (R$ X.XXX,XX)."""
-    return locale.currency(value, grouping=True) # ou sua implementação atual
+    # Garante duas casas decimais e troca ponto por vírgula e vírgula por ponto
+    # Ex: 10000.00 -> '10,000.00' -> '10X000,00' -> '10.000,00'
+    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def format_percent(value):
     """Formata um valor numérico para o padrão percentual brasileiro (X,XX%)."""
-    # locale.format_string formata o número X.XX para X,XX
-    return locale.format_string('%.2f', value, grouping=False) + '%'
+    # Formata com duas casas decimais e troca ponto por vírgula
+    return f"{value:.2f}".replace(".", ",") + '%'
 
 st.set_page_config(layout="wide")
 
