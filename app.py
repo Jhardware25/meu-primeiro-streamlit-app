@@ -457,5 +457,5 @@ else: # SE É PÓS-FIXADA: Custos (IOF, TAC, Prestamista) são DESCONTADOS do va
     - O rendimento da aplicação é calculado com **juros compostos mensais**.
     - O **Imposto de Renda (IR)** na aplicação é aplicado sobre o rendimento bruto total ao final do período, conforme a alíquota informada.
     - A **TR (Taxa Referencial)** é uma taxa de juros que pode variar. Para simulações futuras, considere que seu valor pode mudar.
-    - Esta é uma simulação e os valores reais podem variar. Consulte sempre um profissional financeiro.
+    - Esta é apenas uma simulação e os valores reais podem variar. Consulte sempre um profissional financeiro.
     """)
