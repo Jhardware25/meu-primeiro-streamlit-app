@@ -3,6 +3,17 @@ import pandas as pd
 import numpy_financial as npf
 import plotly.express as px
 import base64
+import locale # Certifique-se que esta linha está no TOPO do seu app.py
+locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8') # E esta linha logo abaixo, configurando o locale
+
+def format_brl(value):
+    """Formata um valor numérico para o padrão monetário brasileiro (R$ X.XXX,XX)."""
+    return locale.currency(value, grouping=True) # ou sua implementação atual
+
+def format_percent(value):
+    """Formata um valor numérico para o padrão percentual brasileiro (X,XX%)."""
+    # locale.format_string formata o número X.XX para X,XX
+    return locale.format_string('%.2f', value, grouping=False) + '%'
 
 st.set_page_config(layout="wide")
 
@@ -291,7 +302,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         st.write(f"- **Seguro Prestamista:** {format_brl(valor_prestamista)}")
     
     if not pd.isna(cet_anual):
-        st.write(f"- **Custo Efetivo Total (CET) Anual:** {cet_anual:.2f}% a.a.g")
+        st.write(f"CET: **{format_percent(cet_anual)} a.a.**")
     else:
         st.write("- **Custo Efetivo Total (CET) Anual:** Não foi possível calcular. Verifique os parâmetros da operação.")
 
