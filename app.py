@@ -176,21 +176,42 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
     # --- FIM DA ALTERAÇÃO PARA A TAC ---
     
-    # *** LÓGICA DO SEGURO PRESTAMISTA ***
-    valor_total_para_parcela_calculo = valor_credito # Base para a parcela mensal
-    custos_iniciais_para_liquido_recebido = iof_total + tac_valor # Base para o valor líquido recebido
+    # *** LÓGICA DO SEGURO PRESTAMISTA E OUTROS CUSTOS ***
 
-    if tipo_taxa_credito == "Prefixada": 
-        # Seguro Prestamista FINANCIADO: Soma ao valor que será parcelado
-        valor_total_para_parcela_calculo += valor_prestamista
-        # O valor do seguro também é um custo inicial que o cliente "não recebe"
-        custos_iniciais_para_liquido_recebido += valor_prestamista 
-    else: # Pós-fixada (TR + Taxa)
-        # Seguro Prestamista PAGO À VISTA: Desconta do valor líquido recebido
-        custos_iniciais_para_liquido_recebido += valor_prestamista
-        # A base para a parcela do crédito continua sendo o valor_credito inicial, não o valor com seguro embutido
-        
-    valor_liquido_recebido = valor_credito - custos_iniciais_para_liquido_recebido
+# Inicializa o valor que será a base para o cálculo das parcelas.
+# Se os custos forem descontados, esta base permanece o valor_credito.
+# Se os custos forem financiados, esta base será valor_credito + custos_financiados.
+valor_total_para_parcela_calculo = valor_credito 
+
+# Inicializa os custos que afetam o valor líquido que o cliente recebe.
+# Se os custos forem descontados, eles estarão aqui.
+# Se os custos forem financiados, eles NÃO devem afetar o valor líquido recebido diretamente.
+custos_afetam_liquido_recebido = 0 # Começa em zero para acumular apenas se forem descontados
+
+
+# SOMA DE TODOS OS CUSTOS (IOF, TAC, Prestamista)
+# Este é o valor total dos custos que precisamos gerenciar
+total_de_custos_operacionais = iof_total + tac_valor + valor_prestamista
+
+
+if tipo_taxa_credito == "Prefixada": 
+    # OPERAÇÃO PREFIXADA: Custos (IOF, TAC, Prestamista) são FINANCIADOS
+    
+    # 1. Base para as Parcelas: O valor que será parcelado é o crédito + todos os custos
+    valor_total_para_parcela_calculo += total_de_custos_operacionais 
+    
+    # 2. Valor Líquido Recebido: O cliente recebe o valor do crédito solicitado integralmente.
+    #    Os custos são diluídos nas parcelas, não descontados do valor inicial.
+    valor_liquido_recebido = valor_credito 
+
+else: # Pós-fixada (TR + Taxa): Custos (IOF, TAC, Prestamista) são DESCONTADOS do valor inicial
+    
+    # 1. Base para as Parcelas: O valor que será parcelado é APENAS o valor do crédito.
+    #    Os custos foram pagos à vista, não foram financiados.
+    #    valor_total_para_parcela_calculo já está com valor_credito (inicializado acima)
+    
+    # 2. Valor Líquido Recebido: O cliente recebe o crédito menos todos os custos.
+    valor_liquido_recebido = valor_credito - total_de_custos_operacionais
 
     # 2. CÁLCULO DA TAXA DE JUROS EFETIVA DO CRÉDITO
     if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
