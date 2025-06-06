@@ -4,6 +4,11 @@ import numpy_financial as npf
 import plotly.express as px
 import base64
 
+# INICIALIZAÇÃO GARANTIDA DE VARIÁVEIS DE CUSTO
+iof_total = 0.0
+tac_valor = 0.0
+valor_prestamista = 0.0
+
 def format_brl(value):
     """Formata um valor numérico para o padrão monetário brasileiro (R$ X.XXX,XX)."""
     # Garante duas casas decimais e troca ponto por vírgula e vírgula por ponto
