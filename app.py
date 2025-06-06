@@ -176,42 +176,49 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
     # --- FIM DA ALTERAÇÃO PARA A TAC ---
     
-    # *** LÓGICA DO SEGURO PRESTAMISTA E OUTROS CUSTOS ***
+    # --- LÓGICA DO SEGURO PRESTAMISTA E OUTROS CUSTOS (IOF, TAC, Prestamista) ---
 
 # Inicializa o valor que será a base para o cálculo das parcelas.
-# Se os custos forem descontados, esta base permanece o valor_credito.
-# Se os custos forem financiados, esta base será valor_credito + custos_financiados.
+# Por padrão, começa com o valor do crédito solicitado.
 valor_total_para_parcela_calculo = valor_credito 
 
-# Inicializa os custos que afetam o valor líquido que o cliente recebe.
-# Se os custos forem descontados, eles estarão aqui.
-# Se os custos forem financiados, eles NÃO devem afetar o valor líquido recebido diretamente.
-custos_afetam_liquido_recebido = 0 # Começa em zero para acumular apenas se forem descontados
+# Inicializa o valor líquido que o cliente receberá.
+# Por padrão, começa com o valor do crédito solicitado.
+valor_liquido_recebido = valor_credito
 
-
-# SOMA DE TODOS OS CUSTOS (IOF, TAC, Prestamista)
-# Este é o valor total dos custos que precisamos gerenciar
+# Soma todos os custos operacionais (IOF, TAC, Prestamista)
 total_de_custos_operacionais = iof_total + tac_valor + valor_prestamista
 
 
+# *** AQUI ESTÁ A LÓGICA DE FINANCIAMENTO/DESCONTO ***
 if tipo_taxa_credito == "Prefixada": 
-    # OPERAÇÃO PREFIXADA: Custos (IOF, TAC, Prestamista) são FINANCIADOS
+    # SE É PREFIXADA: Custos (IOF, TAC, Prestamista) são FINANCIADOS
     
-    # 1. Base para as Parcelas: O valor que será parcelado é o crédito + todos os custos
+    # 1. Base para as Parcelas: O valor que será parcelado é o crédito + todos os custos.
     valor_total_para_parcela_calculo += total_de_custos_operacionais 
     
     # 2. Valor Líquido Recebido: O cliente recebe o valor do crédito solicitado integralmente.
-    #    Os custos são diluídos nas parcelas, não descontados do valor inicial.
-    valor_liquido_recebido = valor_credito 
+    #    Os custos são diluídos nas parcelas, NÃO descontados do valor inicial que ele recebe.
+    #    valor_liquido_recebido já está com valor_credito, então não precisa de ajuste aqui.
 
-else: # Pós-fixada (TR + Taxa): Custos (IOF, TAC, Prestamista) são DESCONTADOS do valor inicial
+else: # SE É PÓS-FIXADA: Custos (IOF, TAC, Prestamista) são DESCONTADOS do valor inicial
     
     # 1. Base para as Parcelas: O valor que será parcelado é APENAS o valor do crédito.
     #    Os custos foram pagos à vista, não foram financiados.
-    #    valor_total_para_parcela_calculo já está com valor_credito (inicializado acima)
+    #    valor_total_para_parcela_calculo já está com valor_credito, então não precisa de ajuste aqui.
     
-    # 2. Valor Líquido Recebido: O cliente recebe o crédito menos todos os custos.
-    valor_liquido_recebido = valor_credito - total_de_custos_operacionais
+    # 2. Valor Líquido Recebido: O cliente recebe o crédito MENOS todos os custos.
+    valor_liquido_recebido -= total_de_custos_operacionais
+
+# --- FIM DA LÓGICA DE FINANCIAMENTO/DESCONTO ---
+
+
+# *** PONTO CRUCIAL: Verifique onde as parcelas são calculadas! ***
+# A função ou o loop que calcula as parcelas (ex: calcular_amortizacao(valor_principal, ...))
+# deve OBRIGATORIAMENTE usar 'valor_total_para_parcela_calculo' como o valor principal,
+# e NÃO 'valor_credito' diretamente.
+# Exemplo:
+# tabela_amortizacao = calcular_amortizacao(valor_total_para_parcela_calculo, ...)
 
     # 2. CÁLCULO DA TAXA DE JUROS EFETIVA DO CRÉDITO
     if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
