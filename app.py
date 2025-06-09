@@ -271,7 +271,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
             # 7. GERAÇÃO DOS DADOS MENSAIS PARA OS GRÁFICOS
             historico = []
-            saldo_atual_credito = valor_credito # Começa com o valor_credito original para o balanço do crédito
+            saldo_atual_credito = valor_total_para_parcela_calculo # <-- USE AQUI O VALOR AJUSTADO
             saldo_atual_aplicacao = valor_aplicacao
 
             for mes_idx in range(1, prazo_credito_meses + 1):
