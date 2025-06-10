@@ -2,10 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy_financial as npf
 import plotly.express as px
-import base64 # Not used in this version, but kept for future use if PDF generation is enabled
+import base64
 
 # INICIALIZAÇÃO GARANTIDA DE VARIÁVEIS DE CUSTO
-# Estas inicializações são importantes para evitar NameError se a lógica de cálculo não for acionada
 iof_total = 0.0
 tac_valor = 0.0
 valor_prestamista = 0.0
@@ -17,150 +16,174 @@ def format_brl(value):
     except (ValueError, TypeError):
         return "R$ --"
     
-    # Garante duas casas decimais e troca ponto por vírgula e vírgula por ponto
-    # Ex: 10000.00 -> '10,000.00' -> '10X000,00' -> '10.000,00'
     formatted_value = f"{value:,.2f}"
     return f"R$ {formatted_value.replace(',', 'X').replace('.', ',').replace('X', '.')}"
 
 def format_percent(value):
     """Formata um valor numérico para o padrão percentual brasileiro (X,XX%)."""
-    # Formata com duas casas decimais e troca ponto por vírgula
     return f"{value:.2f}".replace(".", ",") + '%'
 
-st.set_page_config(layout="wide")
+# --- NOVO: Configuração da página e ícone ---
+st.set_page_config(layout="wide", page_title="Simulador de Crédito e Aplicação", page_icon="💰")
 
 st.title("💰 Simulador de Crédito Com Garantia de Aplicação Financeira")
 
 # --- ENTRADAS DO USUÁRIO ---
+# --- Container para Dados da Operação de Crédito ---
 st.header("Dados da Operação de Crédito:")
+with st.container(border=True): # Adiciona uma borda visual para agrupar
+    col_valor, col_prazo = st.columns(2)
+    with col_valor:
+        valor_credito = st.number_input(
+            "Valor do Crédito (R$):",
+            min_value=1000.0,
+            value=100000.0,
+            step=1000.0,
+            format="%.2f"
+        )
+    with col_prazo:
+        prazo_credito_meses = st.slider(
+            "Prazo do Crédito (meses):",
+            min_value=1,
+            max_value=60,
+            value=60,
+            step=1
+        )
 
-valor_credito = st.number_input(
-    "Valor do Crédito (R$):",
-    min_value=1000.0,
-    value=100000.0,
-    step=1000.0,
-    format="%.2f"
-)
-prazo_credito_meses = st.slider(
-    "Prazo do Crédito (meses):",
-    min_value=1,
-    max_value=60,
-    value=60,
-    step=1
-)
+    col_taxa, col_tipo_taxa = st.columns(2)
+    with col_taxa:
+        taxa_juros_pactuada_input = st.number_input(
+            "Taxa de Juros Pactuada do Crédito (% ao mês):",
+            min_value=0.01,
+            value=0.8,
+            step=0.01,
+            format="%.2f"
+        )
+        taxa_juros_pactuada_mensal = taxa_juros_pactuada_input / 100
+    with col_tipo_taxa:
+        st.write(" ") # Adiciona um espaço para alinhar os rádios
+        tipo_taxa_credito = st.radio(
+            "Tipo de Taxa do Crédito:",
+            ("Prefixada", "Pós-fixada (TR + Taxa)"),
+            index=0,
+            horizontal=True, # Deixa os botões de rádio na horizontal
+            help="Escolha se a taxa do crédito será fixa ou terá um componente de TR."
+        )
 
-taxa_juros_pactuada_input = st.number_input(
-    "Taxa de Juros Pactuada do Crédito (% ao mês):",
-    min_value=0.01,
-    value=0.8,
-    step=0.01,
-    format="%.2f"
-)
-taxa_juros_pactuada_mensal = taxa_juros_pactuada_input / 100
+    taxa_indexador_anual = 0.0
+    if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
+        taxa_indexador_anual = st.number_input(
+            "Taxa do Indexador Anual (TR/ano - %):",
+            min_value=0.0,
+            value=3.0,
+            step=0.01,
+            format="%.2f",
+            help="Taxa do indexador anual (como a TR) que será somada à taxa pactuada."
+        )
+        taxa_indexador_mensal = (1 + taxa_indexador_anual / 100)**(1/12) - 1
+    else:
+        taxa_indexador_mensal = 0.0
 
-tipo_taxa_credito = st.radio(
-    "Tipo de Taxa do Crédito:",
-    ("Prefixada", "Pós-fixada (TR + Taxa)"),
-    index=0,
-    help="Escolha se a taxa do crédito será fixa ou terá um componente de TR."
-)
-
-taxa_indexador_anual = 0.0
-if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
-    taxa_indexador_anual = st.number_input(
-        "Taxa do Indexador Anual (TR/ano - %):",
-        min_value=0.0,
-        value=3.0,
-        step=0.01,
-        format="%.2f",
-        help="Taxa do indexador anual (como a TR) que será somada à taxa pactuada."
-    )
-    taxa_indexador_mensal = (1 + taxa_indexador_anual / 100)**(1/12) - 1
-else:
-    taxa_indexador_mensal = 0.0
-
-iof_percentual = st.number_input(
-    "IOF Total (% do valor do crédito):",
-    min_value=0.0,
-    value=0.38,
-    step=0.01,
-    format="%.2f"
-)
-tac_percentual = st.number_input(
-    "TAC (% do valor do crédito):",
-    min_value=0.0,
-    value=0.0,
-    step=0.01,
-    format="%.2f"
-)
+# --- Expander para Custos Operacionais ---
+with st.expander("Custos Operacionais do Crédito (IOF e TAC)"):
+    col_iof, col_tac = st.columns(2)
+    with col_iof:
+        iof_percentual = st.number_input(
+            "IOF Total (% do valor do crédito):",
+            min_value=0.0,
+            value=0.38,
+            step=0.01,
+            format="%.2f"
+        )
+    with col_tac:
+        tac_percentual = st.number_input(
+            "TAC (% do valor do crédito):",
+            min_value=0.0,
+            value=0.0,
+            step=0.01,
+            format="%.2f"
+        )
 
 # --- NOVO BLOCO: SEGURO PRESTAMISTA ---
+# --- Container para Seguro Prestamista ---
 st.header("Seguro Prestamista:")
-opcao_prestamista = st.radio(
-    "Incluir Seguro Prestamista?",
-    ("Não incluir", "Calcular por Percentual", "Informar Valor Manualmente"),
-    index=0 # Padrão: Não incluir
-)
-
-# Inicializa valor_prestamista aqui, antes de qualquer condição
-valor_prestamista = 0.0 
-percentual_prestamista = 0.0
-
-if opcao_prestamista == "Calcular por Percentual":
-    percentual_prestamista = st.slider(
-        "Percentual do Seguro Prestamista (% do valor do crédito):",
-        min_value=5.0,
-        max_value=10.0,
-        value=7.5, # Um valor médio entre 5% e 10%
-        step=0.1,
-        format="%.1f",
-        help="Percentual do seguro prestamista sobre o valor do crédito, ajustado pela idade dos sócios."
+with st.container(border=True):
+    opcao_prestamista = st.radio(
+        "Incluir Seguro Prestamista?",
+        ("Não incluir", "Calcular por Percentual", "Informar Valor Manualmente"),
+        index=0, # Padrão: Não incluir
+        horizontal=True
     )
-    valor_prestamista = valor_credito * (percentual_prestamista / 100)
-    st.info(f"Valor do Seguro Prestamista (estimado): **{format_brl(valor_prestamista)}**")
-elif opcao_prestamista == "Informar Valor Manualmente":
-    valor_prestamista = st.number_input(
-        "Valor do Seguro Prestamista (R$):",
-        min_value=0.0,
-        value=0.0,
-        step=100.0,
-        format="%.2f"
-    )
+
+    percentual_prestamista = 0.0
+    valor_prestamista = 0.0 # Garante que valor_prestamista seja inicializado
+
+    if opcao_prestamista == "Calcular por Percentual":
+        percentual_prestamista = st.slider(
+            "Percentual do Seguro Prestamista (% do valor do crédito):",
+            min_value=5.0,
+            max_value=10.0,
+            value=7.5,
+            step=0.1,
+            format="%.1f",
+            help="Percentual do seguro prestamista sobre o valor do crédito, ajustado pela idade dos sócios."
+        )
+        valor_prestamista = valor_credito * (percentual_prestamista / 100)
+        st.info(f"Valor do Seguro Prestamista (estimado): **{format_brl(valor_prestamista)}**")
+    elif opcao_prestamista == "Informar Valor Manualmente":
+        valor_prestamista = st.number_input(
+            "Valor do Seguro Prestamista (R$):",
+            min_value=0.0,
+            value=0.0,
+            step=100.0,
+            format="%.2f"
+        )
 # --- FIM NOVO BLOCO: SEGURO PRESTAMISTA ---
 
 
+# --- Container para Dados da Aplicação em Garantia ---
 st.header("Dados da Aplicação em Garantia:")
-valor_aplicacao = st.number_input(
-    "Valor da Aplicação em Garantia (R$):",
-    min_value=1000.0,
-    value=50000.0,
-    step=1000.0,
-    format="%.2f"
-)
+with st.container(border=True):
+    col_aplicacao_valor, col_aplicacao_taxa = st.columns(2)
+    with col_aplicacao_valor:
+        valor_aplicacao = st.number_input(
+            "Valor da Aplicação em Garantia (R$):",
+            min_value=1000.0,
+            value=50000.0,
+            step=1000.0,
+            format="%.2f"
+        )
+    with col_aplicacao_taxa:
+        taxa_rendimento_aplicacao_input = st.number_input(
+            "Taxa de Rendimento da Aplicação (% ao mês):",
+            min_value=0.01,
+            max_value=2.0,
+            value=0.8,
+            step=0.01,
+            format="%.2f"
+        )
+        taxa_rendimento_aplicacao_mensal = taxa_rendimento_aplicacao_input / 100
 
-taxa_rendimento_aplicacao_input = st.number_input(
-    "Taxa de Rendimento da Aplicação (% ao mês):",
-    min_value=0.01,
-    max_value=2.0,
-    value=0.8,
-    step=0.01,
-    format="%.2f"
-)
-taxa_rendimento_aplicacao_mensal = taxa_rendimento_aplicacao_input / 100
+    ir_aliquota = st.slider(
+        "Alíquota de Imposto de Renda sobre Rendimento da Aplicação (%):",
+        min_value=0.0,
+        max_value=22.5,
+        value=15.0,
+        step=0.5,
+        format="%.1f",
+        help="Alíquota de IR para o cálculo do rendimento líquido da aplicação."
+    ) / 100
 
-ir_aliquota = st.slider(
-    "Alíquota de Imposto de Renda sobre Rendimento da Aplicação (%):",
-    min_value=0.0,
-    max_value=22.5,
-    value=15.0,
-    step=0.5,
-    format="%.1f",
-    help="Alíquota de IR para o cálculo do rendimento líquido da aplicação."
-) / 100
+st.divider() # Adiciona um divisor visual para separar as entradas do botão
 
 
 # --- BOTÃO DE SIMULAÇÃO ---
-if st.button("Simular Operação", key="btn_simular_operacao"):
+if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_container_width=True): # Ícone e largura total
+    # Feedback visual durante o cálculo
+    with st.spinner("Calculando a simulação..."):
+        import time
+        time.sleep(1) # Simula um tempo de cálculo. Pode remover ou ajustar o tempo.
+
     # st.info("DEBUG: Botão 'Simular Operação' clicado e código começando a executar!") # Comentado
 
     try:
@@ -387,8 +410,9 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         st.warning("Por favor, verifique os dados inseridos e tente novamente.") 
 
 # --- SEÇÃO DE OBSERVAÇÕES IMPORTANTES (FORA DO if st.button) ---
-st.markdown("---") # <--- Esta linha está agora na indentação correta
-st.subheader("Observações Importantes:")
+# --- Observações Importantes (fora do botão, sempre visíveis) ---
+st.divider() # Outro divisor
+st.subheader("💡 Observações Importantes:")
 st.write("""
 - Os cálculos são baseados na **Tabela Price** para o crédito.
 - O rendimento da aplicação é calculado com **juros compostos mensais**.
