@@ -316,10 +316,12 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         df_evolucao = pd.DataFrame(historico)
         df_fluxo_mensal = pd.DataFrame(historico)
 
-        #st.info(f"DEBUG: df_evolucao está vazia? {df_evolucao.empty}")
-        #st.info(f"DEBUG: df_evolucao.head(): {df_evolucao.head().to_string()}") # Mostra as primeiras linhas do DataFrame
-        #st.info(f"DEBUG: df_fluxo_mensal está vazia? {df_fluxo_mensal.empty}")
-
+        st.info(f"DEBUG: df_evolucao está vazia? {df_evolucao.empty}")
+        st.info(f"DEBUG: df_evolucao.head(): {df_evolucao.head().to_string()}") # Mostra as primeiras linhas do DataFrame
+        st.info(f"DEBUG: df_fluxo_mensal está vazia? {df_fluxo_mensal.empty}")
+        st.dataframe(df_evolucao.head())
+        st.dataframe(df_fluxo_mensal.head())
+        
                 # --- FIM DA SEÇÃO DE CÁLCULOS ---
 
 
