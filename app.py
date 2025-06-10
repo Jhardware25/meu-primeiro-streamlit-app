@@ -164,7 +164,7 @@ ir_aliquota = st.slider(
 
 # --- BOTÃO DE SIMULAÇÃO ---
 if st.button("Simular Operação", key="btn_simular_operacao"):
-    st.info("DEBUG: Botão 'Simular Operação' clicado e código começando a executar!") # Adicione esta linha AQUI
+   #st.info("DEBUG: Botão 'Simular Operação' clicado e código começando a executar!") # Adicione esta linha AQUI
 
     try:
     # --- INÍCIO: SEÇÃO DE CÁLCULOS DA OPERAÇÃO DE CRÉDITO E APLICAÇÃO ---
@@ -182,10 +182,10 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         # Aplica a regra: se o valor calculado for maior que o teto, usa o teto
         tac_valor = min(tac_valor_calculado, teto_tac)
 
-        st.info(f"DEBUG: IOF Total: {format_brl(iof_total)}")
-        st.info(f"DEBUG: TAC Valor: {format_brl(tac_valor)}")
-        st.info(f"DEBUG: Valor Prestamista: {format_brl(valor_prestamista)}")
-        st.info(f"DEBUG: Total Custos Operacionais: {format_brl(iof_total + tac_valor + valor_prestamista)}")
+        #st.info(f"DEBUG: IOF Total: {format_brl(iof_total)}")
+        #st.info(f"DEBUG: TAC Valor: {format_brl(tac_valor)}")
+        #st.info(f"DEBUG: Valor Prestamista: {format_brl(valor_prestamista)}")
+        #st.info(f"DEBUG: Total Custos Operacionais: {format_brl(iof_total + tac_valor + valor_prestamista)}")
 
         # --- FIM DA ALTERAÇÃO PARA A TAC ---
         
@@ -201,7 +201,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
         # Soma todos os custos operacionais (IOF, TAC, Prestamista)
         total_de_custos_operacionais = iof_total + tac_valor + valor_prestamista
-        st.info(f"DEBUG: Total Custos Operacionais: {format_brl(total_de_custos_operacionais)}") # <--- Esta linha de DEBUG vem logo após.
+        #st.info(f"DEBUG: Total Custos Operacionais: {format_brl(total_de_custos_operacionais)}") # <--- Esta linha de DEBUG vem logo após.
 
 
         # *** AQUI ESTÁ A LÓGICA DE FINANCIAMENTO/DESCONTO ***
@@ -234,16 +234,16 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         # Exemplo:
         # tabela_amortizacao = calcular_amortizacao(valor_total_para_parcela_calculo, ...)
 
-        st.info(f"DEBUG: Tipo Taxa Crédito: {tipo_taxa_credito}")
-        st.info(f"DEBUG: Valor Total para Parcela (APÓS LÓGICA DE FINANCIAMENTO): {format_brl(valor_total_para_parcela_calculo)}")
-        st.info(f"DEBUG: Valor Líquido Recebido (APÓS LÓGICA DE FINANCIAMENTO): {format_brl(valor_liquido_recebido)}")
+        #st.info(f"DEBUG: Tipo Taxa Crédito: {tipo_taxa_credito}")
+        #st.info(f"DEBUG: Valor Total para Parcela (APÓS LÓGICA DE FINANCIAMENTO): {format_brl(valor_total_para_parcela_calculo)}")
+        #st.info(f"DEBUG: Valor Líquido Recebido (APÓS LÓGICA DE FINANCIAMENTO): {format_brl(valor_liquido_recebido)}")
 
                 # 2. CÁLCULO DA TAXA DE JUROS EFETIVA DO CRÉDITO
         if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
                     taxa_juros_credito_efetiva_mensal = taxa_juros_pactuada_mensal + taxa_indexador_mensal
         else:
                     taxa_juros_credito_efetiva_mensal = taxa_juros_pactuada_mensal
-        st.info(f"DEBUG: Taxa Juros Crédito Efetiva Mensal: {format_percent(taxa_juros_credito_efetiva_mensal * 100)}")
+        #st.info(f"DEBUG: Taxa Juros Crédito Efetiva Mensal: {format_percent(taxa_juros_credito_efetiva_mensal * 100)}")
             
                 
                 # 3. CÁLCULO DA PARCELA MENSAL E JUROS TOTAIS (BASE TABLE PRICE)
@@ -262,8 +262,8 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
                         st.error(f"Erro no cálculo da parcela do crédito: {e}. Verifique as taxas e prazos.")
                         parcela_mensal_credito = 0.0
                         total_juros_pagos_credito = 0.0
-        st.info(f"DEBUG: Parcela Mensal Crédito: {format_brl(parcela_mensal_credito)}")
-        st.info(f"DEBUG: Total Juros Pagos Crédito: {format_brl(total_juros_pagos_credito)}")
+        #st.info(f"DEBUG: Parcela Mensal Crédito: {format_brl(parcela_mensal_credito)}")
+        #st.info(f"DEBUG: Total Juros Pagos Crédito: {format_brl(total_juros_pagos_credito)}")
                 
 
                 # 4. CÁLCULOS DA APLICAÇÃO
@@ -271,7 +271,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         ir_total_aplicacao = rendimento_bruto_total_aplicacao * ir_aliquota
         rendimento_liquido_total_aplicacao = rendimento_bruto_total_aplicacao - ir_total_aplicacao
         capital_total_acumulado_aplicacao = valor_aplicacao + rendimento_liquido_total_aplicacao
-        st.info(f"DEBUG: Rendimento Líquido Total Aplicação: {format_brl(rendimento_liquido_total_aplicacao)}")
+        #st.info(f"DEBUG: Rendimento Líquido Total Aplicação: {format_brl(rendimento_liquido_total_aplicacao)}")
 
                 # 5. CÁLCULO DO GANHO LÍQUIDO TOTAL
         ganho_liquido_total_operacao = rendimento_liquido_total_aplicacao - total_juros_pagos_credito
@@ -286,7 +286,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
                     cet_anual = ((1 + cet_mensal)**12 - 1) * 100 # Em % ao ano
         except Exception:
                     cet_anual = float('nan') # Usar NaN para indicar que não foi possível calcular
-        st.info(f"DEBUG: CET Anual: {f'{format_percent(cet_anual)} a.a.' if not pd.isna(cet_anual) else 'Não Calculado'}")        
+        #st.info(f"DEBUG: CET Anual: {f'{format_percent(cet_anual)} a.a.' if not pd.isna(cet_anual) else 'Não Calculado'}")        
 
                 # 7. GERAÇÃO DOS DADOS MENSAIS PARA OS GRÁFICOS
         historico = []
@@ -316,16 +316,16 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         df_evolucao = pd.DataFrame(historico)
         df_fluxo_mensal = pd.DataFrame(historico)
 
-        st.info(f"DEBUG: df_evolucao está vazia? {df_evolucao.empty}")
-        st.info(f"DEBUG: df_evolucao.head(): {df_evolucao.head().to_string()}") # Mostra as primeiras linhas do DataFrame
-        st.info(f"DEBUG: df_fluxo_mensal está vazia? {df_fluxo_mensal.empty}")
+        #st.info(f"DEBUG: df_evolucao está vazia? {df_evolucao.empty}")
+        #st.info(f"DEBUG: df_evolucao.head(): {df_evolucao.head().to_string()}") # Mostra as primeiras linhas do DataFrame
+        #st.info(f"DEBUG: df_fluxo_mensal está vazia? {df_fluxo_mensal.empty}")
 
                 # --- FIM DA SEÇÃO DE CÁLCULOS ---
 
 
                 # --- INÍCIO: SEÇÃO DE EXIBIÇÃO DOS RESULTADOS ---
         st.header("Resultados da Simulação:")
-        st.info("DEBUG: Iniciando exibição dos resultados...")
+        #st.info("DEBUG: Iniciando exibição dos resultados...")
 
         st.subheader("Resumo Financeiro da Operação:")
         col1, col2, col3 = st.columns(3)
@@ -477,7 +477,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
             #         st.warning("Isso indica um problema mais fundamental. Por favor, entre em contato com o suporte ou verifique a aba 'Activity' no Streamlit Cloud.")
 
             #     st.success("Status: Processo de geração de PDF finalizado.")
-        st.success("DEBUG: Simulação concluída com sucesso! (Mensagem final)")
+        #st.success("DEBUG: Simulação concluída com sucesso! (Mensagem final)")
         
     except Exception as e: # <--- ADICIONE ESTE BLOCO AQUI, ALINHADO COM O 'try:'
                 st.error(f"Ocorreu um erro durante a simulação: {e}")
