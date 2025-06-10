@@ -164,6 +164,7 @@ ir_aliquota = st.slider(
 
 # --- BOTÃO DE SIMULAÇÃO ---
 if st.button("Simular Operação", key="btn_simular_operacao"):
+    st.info("DEBUG: Botão 'Simular Operação' clicado e código começando a executar!") # Adicione esta linha AQUI
 
     try:
     # --- INÍCIO: SEÇÃO DE CÁLCULOS DA OPERAÇÃO DE CRÉDITO E APLICAÇÃO ---
