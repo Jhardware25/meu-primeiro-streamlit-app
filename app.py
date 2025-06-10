@@ -307,8 +307,8 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
                     historico.append({
                         'Mês': mes_idx,
-                        'Saldo Devedor Credito (R$)': saldo_atual_credito,
-                        'Parcela Mensal Credito (R$)': parcela_mensal_credito,
+                        'Saldo Devedor Credito': saldo_atual_credito,
+                        'Parcela Mensal Credito': parcela_mensal_credito,
                         'Rendimento Liquido Mensal da Aplicacao': rendimento_mes_bruto * (1 - ir_aliquota),
                         'Saldo da Aplicacao Garantia': saldo_atual_aplicacao
                     })
@@ -321,7 +321,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
         st.info(f"DEBUG: df_fluxo_mensal está vazia? {df_fluxo_mensal.empty}")
         st.dataframe(df_evolucao.head())
         st.dataframe(df_fluxo_mensal.head())
-        
+
                 # --- FIM DA SEÇÃO DE CÁLCULOS ---
 
 
@@ -395,7 +395,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
                             },
                         line_shape="spline",
                         height=400
-                                            
+                                                               
                         fig_saldo.update_layout(hovermode="x unified", legend_title_text='Tipo')
                         fig_saldo.update_xaxes(showgrid=True, zeroline=True)
                         fig_saldo.update_yaxes(showgrid=True, zeroline=True)
