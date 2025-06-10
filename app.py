@@ -307,10 +307,10 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
                     historico.append({
                         'Mês': mes_idx,
-                        'Saldo Devedor do Crédito (R$)': saldo_atual_credito,
-                        'Parcela Mensal do Crédito (R$)': parcela_mensal_credito,
-                        'Rendimento Líquido Mensal da Aplicação (R$)': rendimento_mes_bruto * (1 - ir_aliquota),
-                        'Saldo da Aplicação em Garantia (R$)': saldo_atual_aplicacao
+                        'Saldo Devedor Credito (R$)': saldo_atual_credito,
+                        'Parcela Mensal Credito (R$)': parcela_mensal_credito,
+                        'Rendimento Liquido Mensal da Aplicacao': rendimento_mes_bruto * (1 - ir_aliquota),
+                        'Saldo da Aplicacao Garantia': saldo_atual_aplicacao
                     })
 
         df_evolucao = pd.DataFrame(historico)
@@ -385,15 +385,15 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
                     # --- Exibição dos Gráficos ---
                     st.subheader("📊 Evolução Financeira ao Longo do Contrato")
                     if not df_evolucao.empty:
-                        fig_saldo = px.line(df_evolucao, x='Mês', y=['Saldo Devedor do Crédito (R$)', 'Saldo da Aplicação em Garantia (R$)'],
-                                            title='Evolução do Saldo Devedor do Crédito vs. Saldo da Aplicação em Garantia',
-                                            labels={
-                                                "value": "Valor (R$)",
-                                                "variable": "Ativo"
-                                            },
-                                            line_shape="spline",
-                                            height=400
-                                            )
+                        fig_saldo = px.line(df_evolucao, x="Mês", y=["Saldo Devedor Credito", "Saldo Aplicacao Garantia"])
+                        title='Evolução do Saldo Devedor do Crédito vs. Saldo da Aplicação em Garantia',
+                        labels={
+                        "value": "Valor (R$)",
+                                "variable": "Ativo"
+                            },
+                        line_shape="spline",
+                        height=400
+                                            
                         fig_saldo.update_layout(hovermode="x unified", legend_title_text='Tipo')
                         fig_saldo.update_xaxes(showgrid=True, zeroline=True)
                         fig_saldo.update_yaxes(showgrid=True, zeroline=True)
