@@ -201,6 +201,7 @@ if st.button("Simular Operação", key="btn_simular_operacao"):
 
         # Soma todos os custos operacionais (IOF, TAC, Prestamista)
         total_de_custos_operacionais = iof_total + tac_valor + valor_prestamista
+        st.info(f"DEBUG: Total Custos Operacionais: {format_brl(total_de_custos_operacionais)}") # <--- Esta linha de DEBUG vem logo após.
 
 
         # *** AQUI ESTÁ A LÓGICA DE FINANCIAMENTO/DESCONTO ***
