@@ -408,12 +408,6 @@ if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_containe
         if valor_prestamista > 0:
             st.write(f"- **Seguro Prestamista:** {format_brl(valor_prestamista)}")
                             
-        if not pd.isna(cet_anual):
-            st.write(f"- **Custo Efetivo Total (CET):** {format_percent(cet_anual)} a.a.")
-        else:
-            st.write("- **Custo Efetivo Total (CET) Anual:** Não foi possível calcular. Verifique os parâmetros da operação.")
-
-
         # Lógica da Mensagem Final
         if ganho_liquido_total_operacao >= 0:
             st.success("🎉 Esta operação de crédito, considerando o rendimento da sua aplicação, resulta em um **ganho líquido total** para você!")
