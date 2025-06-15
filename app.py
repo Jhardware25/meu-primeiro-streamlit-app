@@ -382,6 +382,14 @@ if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_containe
             st.write(f"- **Tarifa de Abertura de Crédito (TAC):** {format_brl(tac_valor)}")
         if valor_prestamista > 0: # Assumindo que valor_prestamista é calculado/obtido
             st.write(f"- **Seguro Prestamista:** {format_brl(valor_prestamista)}")
+        
+        # NOVO CÁLCULO E EXIBIÇÃO DA PARCELA LÍQUIDA
+        # Certifique-se que df_evolucao e 'Parcela Mensal Credito'/'Rendimento Liquido Mensal da Aplicacao' estão disponíveis
+        parcela_mensal_credito_media = df_evolucao['Parcela Mensal Credito'].mean()
+        parcela_mensal_liquida_media = (df_evolucao['Parcela Mensal Credito'] - df_evolucao['Rendimento Liquido Mensal da Aplicacao']).mean()
+
+        st.write(f"- **Parcela Mensal do Crédito:** {format_brl(parcela_mensal_credito_media)}")
+        st.write(f"- **Parcela Mensal do Crédito (com desconto da Aplicação):** **{format_brl(parcela_mensal_liquida_media)}**")    
 
         # Outras Informações Importantes (mantidas ou reorganizadas)
         st.write(f"- **Juros Totais Pagos no Crédito:** {format_brl(total_juros_pagos_credito)}")
