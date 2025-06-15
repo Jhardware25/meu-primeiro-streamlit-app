@@ -205,18 +205,18 @@ if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_containe
         valor_total_para_parcela_calculo = valor_credito 
         valor_liquido_recebido = valor_credito
 
-        total_de_custos_operacionais = iof_total + tac_valor + valor_prestamista
-        # st.info(f"DEBUG: Total Custos Operacionais: {format_brl(total_de_custos_operacionais)}") # Comentado
+        custos_operacionais_totais = iof_total + tac_valor + valor_prestamista
+        # st.info(f"DEBUG: Total Custos Operacionais: {format_brl(custos_operacionais_totais)}") # Comentado
 
         # *** LÓGICA DE FINANCIAMENTO/DESCONTO ***
         if tipo_taxa_credito == "Prefixada": 
             # SE É PREFIXADA: Custos (IOF, TAC, Prestamista) são FINANCIADOS
-            valor_total_para_parcela_calculo += total_de_custos_operacionais 
+            valor_total_para_parcela_calculo += custos_operacionais_totais
             # valor_liquido_recebido permanece igual a valor_credito
 
         else: # SE É PÓS-FIXADA: Custos (IOF, TAC, Prestamista) são DESCONTADOS do valor inicial
             # valor_total_para_parcela_calculo permanece igual a valor_credito
-            valor_liquido_recebido -= total_de_custos_operacionais
+            valor_liquido_recebido -= custos_operacionais_totais
 
         # st.info(f"DEBUG: Tipo Taxa Crédito: {tipo_taxa_credito}") # Comentado
         # st.info(f"DEBUG: Valor Total para Parcela (APÓS LÓGICA DE FINANCIAMENTO): {format_brl(valor_total_para_parcela_calculo)}") # Comentado
@@ -266,7 +266,9 @@ if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_containe
             cet_anual = ((1 + cet_mensal)**12 - 1) * 100 # Em % ao ano
         except Exception:
             cet_anual = float('nan') # Usar NaN para indicar que não foi possível calcular
-        # st.info(f"DEBUG: CET Anual: {f'{format_percent(cet_anual)} a.a.' if not pd.isna(cet_anual) else 'Não Calculado'}") # Comentado
+            # ... (SEUS CÁLCULOS EXISTENTES TERMINAM AQUI, COMO juros_totais_credito, valor_total_pago_credito, rendimento_liquido_total_aplicacao, custo_total_operacao, ganho_liquido_total_operacao) ...
+
+        
 
         # 7. GERAÇÃO DOS DADOS MENSAIS PARA OS GRÁFICOS
         historico = []
@@ -304,6 +306,50 @@ if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_containe
         # st.dataframe(df_evolucao.head()) # Comentado
         # st.dataframe(df_fluxo_mensal.head()) # Comentado
 
+        # --- NOVO CÁLCULO DO CET ---
+        # 1. Fluxo de Caixa para CET Bruto (sem descontar a aplicação)
+        # Início: Valor do crédito líquido de custos iniciais
+        fluxo_bruto = [valor_credito - custos_operacionais_totais]
+        # Meses seguintes: Parcelas do crédito
+        fluxo_bruto.extend([-p for p in df_evolucao["Parcela Mensal Credito"].tolist()])
+
+        # Calcula a TIR (Taxa Interna de Retorno)
+        try:
+            cet_mensal_bruto = npf.irr(fluxo_bruto)
+            # Para evitar erros de calculo com valores muito baixos ou zeros
+            if isinstance(cet_mensal_bruto, (int, float)) and cet_mensal_bruto > -1:
+                cet_anual_bruto = (1 + cet_mensal_bruto)**12 - 1
+            else:
+                cet_mensal_bruto = 0.0 # Define como zero se o resultado não for numérico válido
+                cet_anual_bruto = 0.0
+        except ValueError: # npf.irr retorna ValueError se não encontrar solução
+            cet_mensal_bruto = 0.0
+            cet_anual_bruto = 0.0
+
+
+        # 2. Fluxo de Caixa para CET Líquido (descontando o rendimento da aplicação)
+        # Início: Valor do crédito líquido de custos iniciais
+        fluxo_liquido = [valor_credito - custos_operacionais_totais]
+        # Meses seguintes: (Parcela do Crédito - Rendimento Líquido da Aplicação)
+        # Se a parcela for menor que o rendimento, o fluxo é positivo para o cliente
+        for i in range(prazo_credito_meses):
+            fluxo_liquido.append(-(df_evolucao.loc[i, "Parcela Mensal Credito"] - df_evolucao.loc[i, "Rendimento Liquido Mensal da Aplicacao"]))
+
+        try:
+            cet_mensal_liquido = npf.irr(fluxo_liquido)
+            # Para evitar erros de calculo com valores muito baixos ou zeros
+            if isinstance(cet_mensal_liquido, (int, float)) and cet_mensal_liquido > -1:
+                cet_anual_liquido = (1 + cet_mensal_liquido)**12 - 1
+            else:
+                cet_mensal_liquido = 0.0 # Define como zero se o resultado não for numérico válido
+                cet_anual_liquido = 0.0
+        except ValueError:
+            cet_mensal_liquido = 0.0
+            cet_anual_liquido = 0.0
+
+        # ... (O restante do seu código de exibição dos resultados e gráficos virá logo abaixo) ...
+        # st.info(f"DEBUG: CET Anual: {f'{format_percent(cet_anual)} a.a.' if not pd.isna(cet_anual) else 'Não Calculado'}") # Comentado
+
         # --- FIM DA SEÇÃO DE CÁLCULOS ---
 
         # --- INÍCIO: SEÇÃO DE EXIBIÇÃO DOS RESULTADOS ---
@@ -339,6 +385,29 @@ if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_containe
         st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{format_brl(capital_total_acumulado_aplicacao)}**")
         st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{format_brl(ganho_liquido_total_operacao)}**")
         st.write(f"- **Tarifa de Abertura de Crédito (TAC):** {format_brl(tac_valor)}")
+
+        # ... (SEUS RESUMOS FINANCEIROS ATUAIS TERMINAM AQUI, como st.write(f"**Rendimento Líquido Total da Aplicação:** {format_brl(rendimento_liquido_total_aplicacao)}") ) ...
+
+        # --- NOVO: Exibição dos CETs ---
+        st.markdown("---") # Separador para o CET
+        st.subheader("Custo Efetivo Total (CET):")
+        
+        # Exibindo o CET Bruto
+        if cet_anual_bruto != 0.0: # Validação simples para IRR válido
+            st.write(f"**Custo Efetivo Total (CET) Bruto Anual:** {format_percent(cet_anual_bruto * 100)} a.a.")
+            st.write(f"**Custo Efetivo Total (CET) Bruto Mensal:** {format_percent(cet_mensal_bruto * 100)} a.m.")
+        else:
+            st.warning("Não foi possível calcular o CET Bruto. Verifique os valores de entrada ou o fluxo de caixa.")
+
+        # Exibindo o CET Líquido (descontado o juros da aplicação)
+        if cet_anual_liquido != 0.0: # Validação simples para IRR válido
+            st.write(f"**Custo Efetivo Total (CET) Líquido (com ganho da aplicação) Anual:** {format_percent(cet_anual_liquido * 100)} a.a.")
+            st.write(f"**Custo Efetivo Total (CET) Líquido (com ganho da aplicação) Mensal:** {format_percent(cet_mensal_liquido * 100)} a.m.")
+        else:
+            st.warning("Não foi possível calcular o CET Líquido. Verifique os valores de entrada ou o fluxo de caixa.")
+        st.markdown("---") # Separador
+
+        # ... (A "Lógica da Mensagem Final" e os gráficos vêm logo abaixo) ...
                             
         # Adiciona o seguro prestamista no resumo detalhado
         if valor_prestamista > 0:
