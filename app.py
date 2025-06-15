@@ -373,13 +373,25 @@ if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_containe
             st.metric("Ganho Líquido Total da Operação", format_brl(ganho_liquido_total_operacao))
             
         st.subheader("Resumo Financeiro Detalhado:")
+        st.write(f"- **Valor do Crédito Liberado:** {format_brl(valor_credito)}") # Adicionado para clareza
+
+        # Exibição dos Custos Iniciais
+        if iof_total > 0: # Assumindo que iof_total é calculado
+            st.write(f"- **Imposto sobre Operações Financeiras (IOF):** {format_brl(iof_total)}")
+        if tac_valor > 0:
+            st.write(f"- **Tarifa de Abertura de Crédito (TAC):** {format_brl(tac_valor)}")
+        if valor_prestamista > 0: # Assumindo que valor_prestamista é calculado/obtido
+            st.write(f"- **Seguro Prestamista:** {format_brl(valor_prestamista)}")
+
+        # Outras Informações Importantes (mantidas ou reorganizadas)
         st.write(f"- **Juros Totais Pagos no Crédito:** {format_brl(total_juros_pagos_credito)}")
         st.write(f"- **Rendimento Bruto Total da Aplicação:** {format_brl(rendimento_bruto_total_aplicacao)}")
         st.write(f"- **Imposto de Renda Retido na Aplicação:** {format_brl(ir_total_aplicacao)}")
         st.write(f"- **Rendimento Líquido Total da Aplicação:** {format_brl(rendimento_liquido_total_aplicacao)}")
         st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{format_brl(capital_total_acumulado_aplicacao)}**")
         st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{format_brl(ganho_liquido_total_operacao)}**")
-        st.write(f"- **Tarifa de Abertura de Crédito (TAC):** {format_brl(tac_valor)}")
+
+# ... (Seu bloco de CET Bruto/Líquido virá logo após este bloco, como já está) ...
 
         # ... (SEUS RESUMOS FINANCEIROS ATUAIS TERMINAM AQUI, como st.write(f"**Rendimento Líquido Total da Aplicação:** {format_brl(rendimento_liquido_total_aplicacao)}") ) ...
 
