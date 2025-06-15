@@ -415,11 +415,8 @@ if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_containe
         st.markdown("---") # Separador
 
         # ... (A "Lógica da Mensagem Final" e os gráficos vêm logo abaixo) ...
-                            
-        # Adiciona o seguro prestamista no resumo detalhado
-        if valor_prestamista > 0:
-            st.write(f"- **Seguro Prestamista:** {format_brl(valor_prestamista)}")
-                            
+                           
+                                  
         # Lógica da Mensagem Final
         if ganho_liquido_total_operacao >= 0:
             st.success("🎉 Esta operação de crédito, considerando o rendimento da sua aplicação, resulta em um **ganho líquido total** para você!")
