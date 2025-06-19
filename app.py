@@ -35,7 +35,7 @@ with st.container(border=True): # Adiciona uma borda visual para agrupar
     col_valor, col_prazo = st.columns(2)
     with col_valor:
         valor_credito = st.number_input(
-            "Valor do Crédito (R$):",
+            "**Valor do Crédito (R$):**",
             min_value=1000.0,
             value=100000.0,
             step=1000.0,
@@ -43,7 +43,7 @@ with st.container(border=True): # Adiciona uma borda visual para agrupar
         )
     with col_prazo:
         prazo_credito_meses = st.slider(
-            "Prazo do Crédito (meses):",
+            "**Prazo do Crédito (meses):**",
             min_value=1,
             max_value=60,
             value=60,
@@ -53,7 +53,7 @@ with st.container(border=True): # Adiciona uma borda visual para agrupar
     col_taxa, col_tipo_taxa = st.columns(2)
     with col_taxa:
         taxa_juros_pactuada_input = st.number_input(
-            "Taxa de Juros Pactuada do Crédito (% ao mês):",
+            "**Taxa de Juros Pactuada do Crédito (% ao mês):**",
             min_value=0.01,
             value=0.8,
             step=0.01,
@@ -63,7 +63,7 @@ with st.container(border=True): # Adiciona uma borda visual para agrupar
     with col_tipo_taxa:
         st.write(" ") # Adiciona um espaço para alinhar os rádios
         tipo_taxa_credito = st.radio(
-            "Tipo de Taxa do Crédito:",
+            "**Tipo de Taxa do Crédito:**",
             ("Prefixada", "Pós-fixada (TR + Taxa)"),
             index=0,
             horizontal=True, # Deixa os botões de rádio na horizontal
@@ -85,11 +85,11 @@ with st.container(border=True): # Adiciona uma borda visual para agrupar
         taxa_indexador_mensal = 0.0
 
 # --- Expander para Custos Operacionais ---
-with st.expander("Custos Operacionais do Crédito (IOF e TAC)"):
+with st.expander("**Custos Operacionais do Crédito (IOF e TAC)**"):
     col_iof, col_tac = st.columns(2)
     with col_iof:
         iof_percentual = st.number_input(
-            "IOF Total (% do valor do crédito):",
+            "**IOF Total (% do valor do crédito):**",
             min_value=0.0,
             value=0.38,
             step=0.01,
@@ -97,7 +97,7 @@ with st.expander("Custos Operacionais do Crédito (IOF e TAC)"):
         )
     with col_tac:
         tac_percentual = st.number_input(
-            "TAC (% do valor do crédito):",
+            "**TAC (% do valor do crédito):**",
             min_value=0.0,
             value=0.0,
             step=0.01,
@@ -109,7 +109,7 @@ with st.expander("Custos Operacionais do Crédito (IOF e TAC)"):
 st.header("Seguro Prestamista:")
 with st.container(border=True):
     opcao_prestamista = st.radio(
-        "Incluir Seguro Prestamista?",
+        "**Incluir Seguro Prestamista?**",
         ("Não incluir", "Calcular por Percentual", "Informar Valor Manualmente"),
         index=0, # Padrão: Não incluir
         horizontal=True
@@ -147,7 +147,7 @@ with st.container(border=True):
     col_aplicacao_valor, col_aplicacao_taxa = st.columns(2)
     with col_aplicacao_valor:
         valor_aplicacao = st.number_input(
-            "Valor da Aplicação em Garantia (R$):",
+            "**Valor da Aplicação em Garantia (R$):**",
             min_value=1000.0,
             value=50000.0,
             step=1000.0,
@@ -155,7 +155,7 @@ with st.container(border=True):
         )
     with col_aplicacao_taxa:
         taxa_rendimento_aplicacao_input = st.number_input(
-            "Taxa de Rendimento da Aplicação (% ao mês):",
+            "**Taxa de Rendimento da Aplicação (% ao mês):**",
             min_value=0.01,
             max_value=2.0,
             value=0.8,
@@ -165,20 +165,20 @@ with st.container(border=True):
         taxa_rendimento_aplicacao_mensal = taxa_rendimento_aplicacao_input / 100
 
     ir_aliquota = st.slider(
-        "Alíquota de Imposto de Renda sobre Rendimento da Aplicação (%):",
+        "**Alíquota de Imposto de Renda sobre Rendimento da Aplicação (%):**",
         min_value=0.0,
         max_value=22.5,
         value=15.0,
         step=0.5,
         format="%.1f",
-        help="Alíquota de IR para o cálculo do rendimento líquido da aplicação."
+        help="**Alíquota de IR para o cálculo do rendimento líquido da aplicação.**"
     ) / 100
 
 st.divider() # Adiciona um divisor visual para separar as entradas do botão
 
 
 # --- BOTÃO DE SIMULAÇÃO ---
-if st.button("🚀 Simular Operação", key="btn_simular_operacao", use_container_width=True): # Ícone e largura total
+if st.button("🚀 Simular Operação", key="**btn_simular_operacao**", use_container_width=True): # Ícone e largura total
     # Feedback visual durante o cálculo
     with st.spinner("Calculando a simulação..."):
         import time
