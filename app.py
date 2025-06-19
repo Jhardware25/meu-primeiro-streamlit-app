@@ -178,7 +178,7 @@ st.divider() # Adiciona um divisor visual para separar as entradas do botão
 
 
 # --- BOTÃO DE SIMULAÇÃO ---
-if st.button("🚀 **Operação Simular**", key="**btn_simular_operacao**", use_container_width=True): # Ícone e largura total
+if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use_container_width=True): # Ícone e largura total
     # Feedback visual durante o cálculo
     with st.spinner("Calculando a simulação..."):
         import time
