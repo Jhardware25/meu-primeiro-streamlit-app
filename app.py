@@ -3,6 +3,7 @@ import pandas as pd
 import numpy_financial as npf
 import plotly.express as px
 import base64
+from fpdf import FPDF # <-- NOVA IMPORTAÇÃO AQUI!
 
 # INICIALIZAÇÃO GARANTIDA DE VARIÁVEIS DE CUSTO
 iof_total = 0.0
@@ -22,6 +23,110 @@ def format_brl(value):
 def format_percent(value):
     """Formata um valor numérico para o padrão percentual brasileiro (X,XX%)."""
     return f"{value:.2f}".replace(".", ",") + '%'
+
+# --- SUAS FUNÇÕES EXISTENTES ---
+def format_brl(value):
+    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+def format_percent(value):
+    return f"{value:,.2f}%".replace(",", "X").replace(".", ",").replace("X", ".")
+
+# --- NOVA FUNÇÃO PARA GERAR O PDF ---
+def create_simulation_pdf(
+    valor_credito, prazo_credito_meses, taxa_juros_pactuada_mensal,
+    tipo_taxa_credito, taxa_indexador_mensal,
+    valor_prestamista, iof_percentual, tac_percentual,
+    valor_aplicacao, taxa_rendimento_aplicacao_mensal, ir_aliquota,
+    df_evolucao, custos_operacionais_totais, rendimento_liquido_total_aplicacao,
+    cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
+    total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao
+):
+    pdf = FPDF(unit="mm", format="A4")
+    pdf.add_page()
+    pdf.set_font("helvetica", "B", 16)
+    
+    # Título
+    pdf.cell(0, 10, "Resumo da Simulação Financeira", ln=True, align="C")
+    pdf.set_font("helvetica", "", 12)
+    pdf.cell(0, 10, f"Data da Simulação: {pd.to_datetime('today').strftime('%d/%m/%Y')}", ln=True, align="C")
+    pdf.ln(10)
+
+    # Seção Crédito
+    pdf.set_font("helvetica", "B", 14)
+    pdf.cell(0, 10, "Detalhes do Crédito", ln=True)
+    pdf.set_font("helvetica", "", 12)
+    pdf.cell(0, 7, f"Valor do Crédito: {format_brl(valor_credito)}", ln=True)
+    pdf.cell(0, 7, f"Prazo: {prazo_credito_meses} meses", ln=True)
+    pdf.cell(0, 7, f"Taxa de Juros Pactuada: {format_percent(taxa_juros_pactuada_mensal * 100)} a.m.", ln=True)
+    pdf.cell(0, 7, f"Tipo de Taxa: {tipo_taxa_credito}", ln=True)
+    if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
+        pdf.cell(0, 7, f"Taxa do Indexador Mensal: {format_percent(taxa_indexador_mensal * 100)} a.m.", ln=True)
+    pdf.ln(5)
+
+    # Seção Custos Operacionais
+    pdf.set_font("helvetica", "B", 14)
+    pdf.cell(0, 10, "Custos Iniciais da Operação", ln=True)
+    pdf.set_font("helvetica", "", 12)
+    if iof_percentual > 0: # Adicionando IOF aqui também
+        pdf.cell(0, 7, f"IOF (% do valor): {format_percent(iof_percentual)}", ln=True)
+    if tac_percentual > 0:
+        pdf.cell(0, 7, f"TAC (% do valor): {format_percent(tac_percentual)}", ln=True)
+    if valor_prestamista > 0:
+        pdf.cell(0, 7, f"Seguro Prestamista: {format_brl(valor_prestamista)}", ln=True)
+    
+    pdf.cell(0, 7, f"Total de Custos Iniciais: {format_brl(custos_operacionais_totais)}", ln=True)
+    pdf.ln(5)
+
+    # Seção Aplicação
+    pdf.set_font("helvetica", "B", 14)
+    pdf.cell(0, 10, "Detalhes da Aplicação", ln=True)
+    pdf.set_font("helvetica", "", 12)
+    pdf.cell(0, 7, f"Valor da Aplicação: {format_brl(valor_aplicacao)}", ln=True)
+    pdf.cell(0, 7, f"Taxa de Rendimento: {format_percent(taxa_rendimento_aplicacao_mensal * 100)} a.m.", ln=True)
+    pdf.cell(0, 7, f"Alíquota de Imposto de Renda: {format_percent(ir_aliquota * 100)}", ln=True)
+    pdf.cell(0, 7, f"Rendimento Líquido Total da Aplicação: {format_brl(rendimento_liquido_total_aplicacao)}", ln=True)
+    pdf.ln(5)
+    
+    # Seção Resumo Financeiro
+    pdf.set_font("helvetica", "B", 14)
+    pdf.cell(0, 10, "Resumo Financeiro Detalhado", ln=True)
+    pdf.set_font("helvetica", "", 12)
+    
+    # Adicionando as informações da parcela
+    parcela_mensal_credito_media = df_evolucao['Parcela Mensal Credito'].mean()
+    parcela_mensal_liquida_media = (df_evolucao['Parcela Mensal Credito'] - df_evolucao['Rendimento Liquido Mensal da Aplicacao']).mean()
+    
+    pdf.cell(0, 7, f"Parcela Mensal do Crédito: {format_brl(parcela_mensal_credito_media)}", ln=True)
+    pdf.cell(0, 7, f"Parcela Mensal do Crédito (com desconto da Aplicação): {format_brl(parcela_mensal_liquida_media)}", ln=True)
+    
+    pdf.cell(0, 7, f"Juros Totais Pagos no Crédito: {format_brl(total_juros_pagos_credito)}", ln=True)
+    pdf.cell(0, 7, f"Imposto de Renda Retido na Aplicação: {format_brl(ir_total_aplicacao)}", ln=True)
+    pdf.cell(0, 7, f"Capital Total Acumulado ao Final do Contrato: {format_brl(capital_total_acumulado_aplicacao)}", ln=True)
+    pdf.cell(0, 7, f"Ganho Líquido Total da Operação: {format_brl(ganho_liquido_total_operacao)}", ln=True)
+
+    pdf.ln(5)
+
+    # Seção CETs
+    pdf.set_font("helvetica", "B", 14)
+    pdf.cell(0, 10, "Custo Efetivo Total (CET)", ln=True)
+    pdf.set_font("helvetica", "", 12)
+    if cet_anual_bruto != 0.0:
+        pdf.cell(0, 7, f"CET Bruto Anual: {format_percent(cet_anual_bruto * 100)} a.a.", ln=True)
+        pdf.cell(0, 7, f"CET Bruto Mensal: {format_percent(cet_mensal_bruto * 100)} a.m.", ln=True)
+    else:
+        pdf.cell(0, 7, "CET Bruto: Não foi possível calcular.", ln=True)
+
+    if cet_anual_liquido != 0.0:
+        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Anual: {format_percent(cet_anual_liquido * 100)} a.a.", ln=True)
+        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Mensal: {format_percent(cet_mensal_liquido * 100)} a.m.", ln=True)
+    else:
+        pdf.cell(0, 7, "CET Líquido: Não foi possível calcular.", ln=True)
+
+    pdf.ln(10)
+    pdf.set_font("helvetica", "I", 10)
+    pdf.cell(0, 5, "Simulador financeiro desenvolvido com Streamlit e Python", ln=True, align="R")
+
+    return pdf.output(dest='S').encode('latin-1') # Retorna o PDF como bytes codificados
 
 # --- NOVO: Configuração da página e ícone ---
 st.set_page_config(layout="wide", page_title="Simulador de Crédito e Aplicação", page_icon="💰")
@@ -477,13 +582,42 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
             fig_fluxo.update_xaxes(showgrid=True, zeroline=True)
             fig_fluxo.update_yaxes(showgrid=True, zeroline=True)
             st.plotly_chart(fig_fluxo, use_container_width=True)
+            
+            # <<<--- COLE O BLOCO DAS "OPÇÕES DE EXPORTAÇÃO" AQUI ---
 
+            st.markdown("---") # Separador para o PDF
+            st.subheader("Opções de Exportação:")
+
+            pdf_bytes = create_simulation_pdf(
+                valor_credito, prazo_credito_meses, taxa_juros_pactuada_mensal,
+                tipo_taxa_credito, taxa_indexador_mensal,
+                valor_prestamista, iof_percentual, tac_percentual,
+                valor_aplicacao, taxa_rendimento_aplicacao_mensal, ir_aliquota,
+                df_evolucao, custos_operacionais_totais, rendimento_liquido_total_aplicacao,
+                cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
+                total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao
+            )
+
+            st.download_button(
+                label="⬇️ Baixar Resumo em PDF",
+                data=pdf_bytes,
+                file_name="resumo_simulacao_credito.pdf",
+                mime="application/pdf",
+                help="Clique para baixar um resumo completo da simulação em formato PDF."
+            )
+            # --- FIM DO BLOCO DO BOTÃO DE DOWNLOAD ---
+
+             
+        # ... (Qualquer outro código que você tenha após os resultados) ...
         # st.success("DEBUG: Simulação concluída com sucesso! (Mensagem final)") # Comentado
         
     except Exception as e: # <--- ESTE EXCEPT ESTÁ ALINHADO CORRETAMENTE COM O 'try:'
         st.error(f"Ocorreu um erro durante a simulação: {e}")
         st.warning("Por favor, verifique os dados inseridos e tente novamente.") 
 
+        # ... (Seu código existente de exibição de resultados, gráficos, etc.) ...
+
+                
 # --- SEÇÃO DE OBSERVAÇÕES IMPORTANTES (FORA DO if st.button) ---
 # --- Observações Importantes (fora do botão, sempre visíveis) ---
 st.divider() # Outro divisor
