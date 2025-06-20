@@ -126,7 +126,7 @@ def create_simulation_pdf(
     pdf.set_font("helvetica", "I", 10)
     pdf.cell(0, 5, "Simulador financeiro desenvolvido com Streamlit e Python", ln=True, align="R")
 
-    return pdf.output(dest='S') # Retorna o PDF como bytes
+    return bytes(pdf.output(dest='S')) # Converte o bytearray/bytes para bytes
 
 # --- NOVO: Configuração da página e ícone ---
 st.set_page_config(layout="wide", page_title="Simulador de Crédito e Aplicação", page_icon="💰")
