@@ -162,7 +162,7 @@ def create_simulation_pdf(
     # Destaque para Ganho Líquido Total da Operação
     pdf.set_font("helvetica", "B", 12) # Negrito
     if ganho_liquido_total_operacao >= 0:
-        pdf.set_text_color(0, 128, 0) # Verde escuro
+        pdf.set_text_color(0, 0, 200) # Azul (pode ser 0, 0, 255 para um azul mais vivo, ou 0, 0, 150 para mais escuro)
         pdf.cell(0, 7, f"Ganho Líquido Total da Operação: {format_brl(ganho_liquido_total_operacao)}", ln=True)
     else:
         pdf.set_text_color(200, 0, 0) # Vermelho
