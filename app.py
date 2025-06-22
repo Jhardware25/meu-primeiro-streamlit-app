@@ -91,13 +91,19 @@ def create_simulation_pdf(
     if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
         pdf.cell(0, 7, f"Taxa do Indexador Mensal: {format_percent(taxa_indexador_mensal * 100)} a.m.", ln=True)
 
-    # --- NOVO TRECHO A SER ADICIONADO AQUI ---
-    # Calcule o valor líquido recebido
-    valor_liquido_recebido = valor_credito - custos_operacionais_totais
-    pdf.set_font("helvetica", "B", 12) # Opcional: destaque com negrito
-    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido)}", ln=True, align="L")
-    pdf.set_font("helvetica", "", 12) # Voltar para a fonte normal
+    # --- NOVO TRECHO COM LÓGICA CONDICIONAL PARA O VALOR LÍQUIDO RECEBIDO ---
+    valor_liquido_recebido_final = valor_credito # Valor padrão, para Prefixada
+
+    # Se a taxa for pós-fixada, os custos são descontados do valor do crédito para o valor líquido recebido
+    # Caso contrário (Prefixada), os custos são financiados e o valor líquido recebido é o próprio valor do crédito
+    if tipo_taxa_credito == "Pós-fixada (TR + Taxa)": # Ajuste a string conforme o nome exato no seu código
+        valor_liquido_recebido_final = valor_credito - custos_operacionais_totais
+
+    pdf.set_font("helvetica", "B", 12)
+    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido_final)}", ln=True, align="L")
+    pdf.set_font("helvetica", "", 12)
     # --- FIM DO NOVO TRECHO ---
+
     
     # Salva a posição Y após imprimir todo o conteúdo da seção
     y_end_credito = pdf.get_y()
