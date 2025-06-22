@@ -57,6 +57,32 @@ def create_simulation_pdf(
     # Adiciona uma linha divisória
     pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
     pdf.ln(2) # Pequeno espaço após a linha
+    # --- INÍCIO DO NOVO BLOCO para o retângulo ---
+    # Salva a posição Y antes de imprimir o conteúdo da seção
+    y_start_credito = pdf.get_y()
+
+    pdf.set_font("helvetica", "", 12)
+    pdf.cell(0, 7, f"Valor do Crédito: {format_brl(valor_credito)}", ln=True)
+    pdf.cell(0, 7, f"Prazo: {prazo_credito_meses} meses", ln=True)
+    pdf.cell(0, 7, f"Taxa de Juros Pactuada: {format_percent(taxa_juros_pactuada_mensal * 100)} a.m.", ln=True)
+    pdf.cell(0, 7, f"Tipo de Taxa: {tipo_taxa_credito}", ln=True)
+    if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
+        pdf.cell(0, 7, f"Taxa do Indexador Mensal: {format_percent(taxa_indexador_mensal * 100)} a.m.", ln=True)
+
+    # Salva a posição Y após imprimir todo o conteúdo da seção
+    y_end_credito = pdf.get_y()
+
+    # Desenha o retângulo ao redor da seção "Detalhes do Crédito"
+    pdf.set_draw_color(200, 200, 200) # Cor cinza claro para a borda (RGB)
+    pdf.set_line_width(0.2) # Espessura da linha (em mm)
+    # pdf.rect(x, y, w, h)
+    # x: Posição horizontal de início (margem esquerda)
+    # y: Posição vertical de início (y_start_credito - um pequeno padding)
+    # w: Largura do retângulo (largura da área de conteúdo)
+    # h: Altura do retângulo (y_end_credito - y_start_credito + um pequeno padding)
+    pdf.rect(pdf.l_margin, y_start_credito - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_credito - y_start_credito + 4)
+    pdf.ln(5) # Espaço no final da seção
+    # --- FIM DO NOVO BLOCO para o retângulo ---
     pdf.set_font("helvetica", "", 12)
     pdf.cell(0, 7, f"Valor do Crédito: {format_brl(valor_credito)}", ln=True)
     pdf.cell(0, 7, f"Prazo: {prazo_credito_meses} meses", ln=True)
@@ -72,6 +98,26 @@ def create_simulation_pdf(
     # Adiciona uma linha divisória
     pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
     pdf.ln(2) # Pequeno espaço após a linha
+    # --- INÍCIO DO NOVO BLOCO para o retângulo ---
+    y_start_custos = pdf.get_y() # Salva a posição Y antes de imprimir o conteúdo da seção
+
+    pdf.set_font("helvetica", "", 12)
+    if iof_percentual > 0:
+        pdf.cell(0, 7, f"IOF (% do valor): {format_percent(iof_percentual)}", ln=True)
+    if tac_percentual > 0:
+        pdf.cell(0, 7, f"TAC (% do valor): {format_percent(tac_percentual)}", ln=True)
+    if valor_prestamista > 0:
+        pdf.cell(0, 7, f"Seguro Prestamista: {format_brl(valor_prestamista)}", ln=True)
+
+    pdf.cell(0, 7, f"Total de Custos Iniciais: {format_brl(custos_operacionais_totais)}", ln=True)
+
+    y_end_custos = pdf.get_y() # Salva a posição Y após imprimir todo o conteúdo da seção
+
+    pdf.set_draw_color(200, 200, 200) # Cor cinza claro para a borda
+    pdf.set_line_width(0.2) # Espessura da linha
+    pdf.rect(pdf.l_margin, y_start_custos - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_custos - y_start_custos + 4)
+    pdf.ln(5) # Espaço no final da seção
+    # --- FIM DO NOVO BLOCO para o retângulo ---
     pdf.set_font("helvetica", "", 12)
     if iof_percentual > 0: # Adicionando IOF aqui também
         pdf.cell(0, 7, f"IOF (% do valor): {format_percent(iof_percentual)}", ln=True)
@@ -89,6 +135,22 @@ def create_simulation_pdf(
     # Adiciona uma linha divisória
     pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
     pdf.ln(2) # Pequeno espaço após a linha
+    # --- INÍCIO DO NOVO BLOCO para o retângulo ---
+    y_start_aplicacao = pdf.get_y() # Salva a posição Y antes de imprimir o conteúdo da seção
+
+    pdf.set_font("helvetica", "", 12)
+    pdf.cell(0, 7, f"Valor da Aplicação: {format_brl(valor_aplicacao)}", ln=True)
+    pdf.cell(0, 7, f"Taxa de Rendimento: {format_percent(taxa_rendimento_aplicacao_mensal * 100)} a.m.", ln=True)
+    pdf.cell(0, 7, f"Alíquota de Imposto de Renda: {format_percent(ir_aliquota * 100)}", ln=True)
+    pdf.cell(0, 7, f"Rendimento Líquido Total da Aplicação: {format_brl(rendimento_liquido_total_aplicacao)}", ln=True)
+
+    y_end_aplicacao = pdf.get_y() # Salva a posição Y após imprimir todo o conteúdo da seção
+
+    pdf.set_draw_color(200, 200, 200) # Cor cinza claro para a borda
+    pdf.set_line_width(0.2) # Espessura da linha
+    pdf.rect(pdf.l_margin, y_start_aplicacao - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_aplicacao - y_start_aplicacao + 4)
+    pdf.ln(5) # Espaço no final da seção
+    # --- FIM DO NOVO BLOCO para o retângulo ---
     pdf.set_font("helvetica", "", 12)
     pdf.cell(0, 7, f"Valor da Aplicação: {format_brl(valor_aplicacao)}", ln=True)
     pdf.cell(0, 7, f"Taxa de Rendimento: {format_percent(taxa_rendimento_aplicacao_mensal * 100)} a.m.", ln=True)
@@ -102,6 +164,43 @@ def create_simulation_pdf(
     # Adiciona uma linha divisória
     pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
     pdf.ln(2) # Pequeno espaço após a linha
+    # --- INÍCIO DO NOVO BLOCO para o retângulo ---
+    y_start_resumo = pdf.get_y() # Salva a posição Y antes de imprimir o conteúdo da seção
+
+    pdf.set_font("helvetica", "", 12)
+    # Adicionando as informações da parcela
+    parcela_mensal_credito_media = df_evolucao['Parcela Mensal Credito'].mean()
+    parcela_mensal_liquida_media = (df_evolucao['Parcela Mensal Credito'] - df_evolucao['Rendimento Liquido Mensal da Aplicacao']).mean()
+
+    pdf.cell(0, 7, f"Parcela Mensal do Crédito: {format_brl(parcela_mensal_credito_media)}", ln=True)
+    pdf.cell(0, 7, f"Parcela Mensal do Crédito (com desconto da Aplicação): {format_brl(parcela_mensal_liquida_media)}", ln=True)
+
+    pdf.cell(0, 7, f"Juros Totais Pagos no Crédito: {format_brl(total_juros_pagos_credito)}", ln=True)
+    pdf.cell(0, 7, f"Imposto de Renda Retido na Aplicação: {format_brl(ir_total_aplicacao)}", ln=True)
+
+    # Destaque para Capital Total Acumulado
+    pdf.set_font("helvetica", "B", 12) # Negrito
+    pdf.cell(0, 7, f"Capital Total Acumulado ao Final do Contrato: {format_brl(capital_total_acumulado_aplicacao)}", ln=True)
+    pdf.set_font("helvetica", "", 12) # Voltar para a fonte normal
+
+    # Destaque para Ganho Líquido Total da Operação
+    pdf.set_font("helvetica", "B", 12) # Negrito
+    if ganho_liquido_total_operacao >= 0:
+        pdf.set_text_color(0, 128, 0) # Verde escuro
+        pdf.cell(0, 7, f"Ganho Líquido Total da Operação: {format_brl(ganho_liquido_total_operacao)}", ln=True)
+    else:
+        pdf.set_text_color(200, 0, 0) # Vermelho
+        pdf.cell(0, 7, f"Custo Líquido Total da Operação: {format_brl(abs(ganho_liquido_total_operacao))}", ln=True) # Mostrar como custo, com valor absoluto
+    pdf.set_text_color(0, 0, 0) # Voltar para preto após o destaque
+    pdf.set_font("helvetica", "", 12) # Voltar para a fonte normal
+
+    y_end_resumo = pdf.get_y() # Salva a posição Y após imprimir todo o conteúdo da seção
+
+    pdf.set_draw_color(200, 200, 200) # Cor cinza claro para a borda
+    pdf.set_line_width(0.2) # Espessura da linha
+    pdf.rect(pdf.l_margin, y_start_resumo - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_resumo - y_start_resumo + 4)
+    pdf.ln(5) # Espaço no final da seção
+    # --- FIM DO NOVO BLOCO para o retângulo ---
     pdf.set_font("helvetica", "", 12)
     
     # Adicionando as informações da parcela
@@ -124,6 +223,35 @@ def create_simulation_pdf(
     # Adiciona uma linha divisória
     pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
     pdf.ln(2) # Pequeno espaço após a linha
+    # --- INÍCIO DO NOVO BLOCO para o retângulo ---
+    y_start_cet = pdf.get_y() # Salva a posição Y antes de imprimir o conteúdo da seção
+
+    pdf.set_font("helvetica", "", 12)
+    pdf.cell(0, 7, f"CET Bruto Anual: {format_percent(cet_anual_bruto * 100)} a.a.", ln=True)
+    pdf.cell(0, 7, f"CET Bruto Mensal: {format_percent(cet_mensal_bruto * 100)} a.m.", ln=True)
+
+    # Destaque para CET Líquido
+    if cet_anual_liquido != 0.0:
+        pdf.set_font("helvetica", "B", 12) # Negrito
+        pdf.set_text_color(0, 100, 0) # Um verde um pouco mais escuro para o CET líquido favorável
+        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Anual: {format_percent(cet_anual_liquido * 100)} a.a.", ln=True)
+        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Mensal: {format_percent(cet_mensal_liquido * 100)} a.m.", ln=True)
+        pdf.set_text_color(0, 0, 0) # Voltar para preto
+        pdf.set_font("helvetica", "", 12) # Voltar para a fonte normal
+    else:
+        pdf.set_font("helvetica", "B", 12) # Manter negrito na mensagem de erro
+        pdf.set_text_color(200, 0, 0) # Vermelho para o erro
+        pdf.cell(0, 7, "CET Líquido: Não foi possível calcular.", ln=True)
+        pdf.set_text_color(0, 0, 0) # Voltar para preto
+        pdf.set_font("helvetica", "", 12) # Voltar para a fonte normal
+
+    y_end_cet = pdf.get_y() # Salva a posição Y após imprimir todo o conteúdo da seção
+
+    pdf.set_draw_color(200, 200, 200) # Cor cinza claro para a borda
+    pdf.set_line_width(0.2) # Espessura da linha
+    pdf.rect(pdf.l_margin, y_start_cet - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_cet - y_start_cet + 4)
+    pdf.ln(10) # Espaço no final da seção (pode ser 10 para dar mais respiro)
+    # --- FIM DO NOVO BLOCO para o retângulo ---
     pdf.set_font("helvetica", "", 12)
     if cet_anual_bruto != 0.0:
         pdf.cell(0, 7, f"CET Bruto Anual: {format_percent(cet_anual_bruto * 100)} a.a.", ln=True)
