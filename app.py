@@ -169,27 +169,8 @@ def create_simulation_pdf(
     pdf.rect(pdf.l_margin, y_start_aplicacao - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_aplicacao - y_start_aplicacao + 4)
     pdf.ln(5) # Espaço no final da seção
     # --- FIM DO NOVO BLOCO para o retângulo ---
-    
-    # --- INÍCIO DA NOVA SEÇÃO: Observações Importantes ---
-    pdf.set_font("helvetica", "B", 14)
-    pdf.cell(0, 10, "Observações Importantes", ln=True)
-    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
-    pdf.ln(2)
 
-    # Início do bloco para o retângulo desta seção
-    y_start_observacoes = pdf.get_y()
-
-    pdf.set_font("helvetica", "", 10) # Fonte um pouco menor para notas, se desejar
-    pdf.multi_cell(0, 6, "1. A simulação de crédito utiliza o sistema de amortização Tabela Price.  \n2. Os cálculos de juros e rendimentos são baseados no regime de juros compostos.  \n3. O Imposto de Renda (IR) incide apenas sobre o rendimento bruto da aplicação, conforme alíquota informada.  \n4. Para taxas pós-fixadas, a Taxa Referencial (TR) ou outro indexador pode influenciar os valores das parcelas e rendimentos da aplicação.  \n5. Os valores apresentados são estimativas e podem variar conforme as condições de mercado e políticas da instituição financeira. ", align="L")
-
-    y_end_observacoes = pdf.get_y()
-
-    pdf.set_draw_color(200, 200, 200)
-    pdf.set_line_width(0.2)
-    pdf.rect(pdf.l_margin, y_start_observacoes - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_observacoes - y_start_observacoes + 4)
-    pdf.ln(5)
-    # --- FIM DA NOVA SEÇÃO ---
-    
+       
     # Seção Resumo Financeiro
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, "Resumo Financeiro Detalhado", ln=True)
@@ -269,6 +250,25 @@ def create_simulation_pdf(
     pdf.rect(pdf.l_margin, y_start_cet - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_cet - y_start_cet + 4)
     pdf.ln(10) # Espaço no final da seção (pode ser 10 para dar mais respiro)
     # --- FIM DO NOVO BLOCO para o retângulo ---
+    # --- INÍCIO DA NOVA SEÇÃO: Observações Importantes ---
+    pdf.set_font("helvetica", "B", 14)
+    pdf.cell(0, 10, "Observações Importantes", ln=True)
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
+    pdf.ln(2)
+
+    # Início do bloco para o retângulo desta seção
+    y_start_observacoes = pdf.get_y()
+
+    pdf.set_font("helvetica", "", 10) # Fonte um pouco menor para notas, se desejar
+    pdf.multi_cell(0, 6, "1. A simulação de crédito utiliza o sistema de amortização Tabela Price.  \n2. Os cálculos de juros e rendimentos são baseados no regime de juros compostos.  \n3. O Imposto de Renda (IR) incide apenas sobre o rendimento bruto da aplicação, conforme alíquota informada.  \n4. Para taxas pós-fixadas, a Taxa Referencial (TR) ou outro indexador pode influenciar os valores das parcelas e rendimentos da aplicação.  \n5. Os valores apresentados são estimativas e podem variar conforme as condições de mercado e políticas da instituição financeira. ", align="L")
+
+    y_end_observacoes = pdf.get_y()
+
+    pdf.set_draw_color(200, 200, 200)
+    pdf.set_line_width(0.2)
+    pdf.rect(pdf.l_margin, y_start_observacoes - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_observacoes - y_start_observacoes + 4)
+    pdf.ln(5)
+    # --- FIM DA NOVA SEÇÃO ---
     
     pdf.set_font("helvetica", "I", 10)
     #pdf.cell(0, 5, "Simulador financeiro desenvolvido com Streamlit e Python", ln=True, align="R")
