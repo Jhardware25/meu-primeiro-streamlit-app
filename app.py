@@ -54,6 +54,9 @@ def create_simulation_pdf(
     # Seção Crédito
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, "Detalhes do Crédito", ln=True)
+    # Adiciona uma linha divisória
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
+    pdf.ln(2) # Pequeno espaço após a linha
     pdf.set_font("helvetica", "", 12)
     pdf.cell(0, 7, f"Valor do Crédito: {format_brl(valor_credito)}", ln=True)
     pdf.cell(0, 7, f"Prazo: {prazo_credito_meses} meses", ln=True)
@@ -66,6 +69,9 @@ def create_simulation_pdf(
     # Seção Custos Operacionais
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, "Custos Iniciais da Operação", ln=True)
+    # Adiciona uma linha divisória
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
+    pdf.ln(2) # Pequeno espaço após a linha
     pdf.set_font("helvetica", "", 12)
     if iof_percentual > 0: # Adicionando IOF aqui também
         pdf.cell(0, 7, f"IOF (% do valor): {format_percent(iof_percentual)}", ln=True)
@@ -80,6 +86,9 @@ def create_simulation_pdf(
     # Seção Aplicação
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, "Detalhes da Aplicação", ln=True)
+    # Adiciona uma linha divisória
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
+    pdf.ln(2) # Pequeno espaço após a linha
     pdf.set_font("helvetica", "", 12)
     pdf.cell(0, 7, f"Valor da Aplicação: {format_brl(valor_aplicacao)}", ln=True)
     pdf.cell(0, 7, f"Taxa de Rendimento: {format_percent(taxa_rendimento_aplicacao_mensal * 100)} a.m.", ln=True)
@@ -90,6 +99,9 @@ def create_simulation_pdf(
     # Seção Resumo Financeiro
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, "Resumo Financeiro Detalhado", ln=True)
+    # Adiciona uma linha divisória
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
+    pdf.ln(2) # Pequeno espaço após a linha
     pdf.set_font("helvetica", "", 12)
     
     # Adicionando as informações da parcela
@@ -109,6 +121,9 @@ def create_simulation_pdf(
     # Seção CETs
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, "Custo Efetivo Total (CET)", ln=True)
+    # Adiciona uma linha divisória
+    pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
+    pdf.ln(2) # Pequeno espaço após a linha
     pdf.set_font("helvetica", "", 12)
     if cet_anual_bruto != 0.0:
         pdf.cell(0, 7, f"CET Bruto Anual: {format_percent(cet_anual_bruto * 100)} a.a.", ln=True)
