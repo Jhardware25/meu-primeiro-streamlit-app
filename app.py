@@ -117,9 +117,9 @@ def create_simulation_pdf(
 
     pdf.set_font("helvetica", "", 12)
     if iof_percentual > 0:
-        pdf.cell(0, 7, f"IOF (% do valor): {format_percent(iof_percentual)}", ln=True)
+        pdf.cell(0, 7, f"IOF: {format_percent(iof_percentual)} ({format_brl(iof_total)})", ln=True, align="L")
     if tac_percentual > 0:
-        pdf.cell(0, 7, f"TAC (% do valor): {format_percent(tac_percentual)}", ln=True)
+        pdf.cell(0, 7, f"TAC: {format_percent(tac_percentual)} ({format_brl(tac_valor)})", ln=True, align="L")
     if valor_prestamista > 0:
         pdf.cell(0, 7, f"Seguro Prestamista: {format_brl(valor_prestamista)}", ln=True)
 
