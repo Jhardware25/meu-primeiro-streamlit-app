@@ -4,6 +4,28 @@ import numpy_financial as npf
 import plotly.express as px
 import base64
 from fpdf import FPDF # <-- NOVA IMPORTAÇÃO AQUI!
+# Defina uma subclasse para personalizar o rodapé
+class PDF(FPDF):
+    def footer(self):
+        # Defina a fonte para o rodapé
+        self.set_y(-15) # Posição a 1.5 cm do final da página
+        self.set_font('helvetica', 'I', 8) # 'I' para itálico, 8 para tamanho menor
+        
+        # O texto do rodapé
+        footer_text = "Simulador financeiro desenvolvido com Streamlit e Python"
+        
+        # Calcular a largura do texto para alinhar à direita
+        text_width = self.get_string_width(footer_text)
+        
+        # Definir a posição X para alinhamento à direita
+        # Largura da página - margem direita - largura do texto
+        x_position = self.w - self.r_margin - text_width
+        
+        self.set_x(x_position) # Define a posição X para o alinhamento
+        self.cell(0, 10, footer_text, 0, 0, 'R') # 'R' para alinhar o texto à direita da célula
+        
+        # Opcional: Adicionar número da página, se desejar
+        # self.cell(0, 10, f'Página {self.page_no()}/{{nb}}', 0, 0, 'C') # Para centralizar o número da página
 
 # INICIALIZAÇÃO GARANTIDA DE VARIÁVEIS DE CUSTO
 iof_total = 0.0
@@ -41,7 +63,7 @@ def create_simulation_pdf(
     cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
     total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao
 ):
-    pdf = FPDF(unit="mm", format="A4")
+    pdf = PDF(unit="mm", format="A4")
     pdf.add_page()
     pdf.set_font("helvetica", "B", 16)
     
@@ -213,21 +235,9 @@ def create_simulation_pdf(
     pdf.rect(pdf.l_margin, y_start_cet - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_cet - y_start_cet + 4)
     pdf.ln(10) # Espaço no final da seção (pode ser 10 para dar mais respiro)
     # --- FIM DO NOVO BLOCO para o retângulo ---
-    #pdf.set_font("helvetica", "", 12)
-    #if cet_anual_bruto != 0.0:
-        #pdf.cell(0, 7, f"CET Bruto Anual: {format_percent(cet_anual_bruto * 100)} a.a.", ln=True)
-        #pdf.cell(0, 7, f"CET Bruto Mensal: {format_percent(cet_mensal_bruto * 100)} a.m.", ln=True)
-    #else:
-        #pdf.cell(0, 7, "CET Bruto: Não foi possível calcular.", ln=True)
-
-    #if cet_anual_liquido != 0.0:
-        #pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Anual: {format_percent(cet_anual_liquido * 100)} a.a.", ln=True)
-        #pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Mensal: {format_percent(cet_mensal_liquido * 100)} a.m.", ln=True)
-    #else:
-        #pdf.cell(0, 7, "CET Líquido: Não foi possível calcular.", ln=True)
-    #pdf.ln(10)
+    
     pdf.set_font("helvetica", "I", 10)
-    pdf.cell(0, 5, "Simulador financeiro desenvolvido com Streamlit e Python", ln=True, align="R")
+    #pdf.cell(0, 5, "Simulador financeiro desenvolvido com Streamlit e Python", ln=True, align="R")
 
     return bytes(pdf.output(dest='S')) # Converte o bytearray/bytes para bytes
 
