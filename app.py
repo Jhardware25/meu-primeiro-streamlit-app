@@ -225,8 +225,7 @@ def create_simulation_pdf(
         #pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Mensal: {format_percent(cet_mensal_liquido * 100)} a.m.", ln=True)
     #else:
         #pdf.cell(0, 7, "CET Líquido: Não foi possível calcular.", ln=True)
-
-    pdf.ln(10)
+    #pdf.ln(10)
     pdf.set_font("helvetica", "I", 10)
     pdf.cell(0, 5, "Simulador financeiro desenvolvido com Streamlit e Python", ln=True, align="R")
 
