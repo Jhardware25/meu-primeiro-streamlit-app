@@ -275,6 +275,15 @@ def create_simulation_pdf(
     pdf.set_draw_color(200, 200, 200) # Cor cinza claro para a borda
     pdf.set_line_width(0.2) # Espessura da linha
     pdf.rect(pdf.l_margin, y_start_cet - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_cet - y_start_cet + 4)
+    # --- INÍCIO DO NOVO TRECHO: BREAKDOWN DO CET ---
+    pdf.set_font("helvetica", "B", 10) # Negrito e fonte menor para o título da explicação
+    pdf.cell(0, 7, "O CET inclui:", ln=True, align="L")
+    pdf.set_font("helvetica", "", 10) # Fonte normal para a lista
+
+    pdf.multi_cell(0, 6, "• Juros (taxa de juros do crédito) \n• Tarifas (como a TAC - Tarifa de Abertura de Crédito) \n• Impostos (como o IOF - Imposto sobre Operações Financeiras) \n• Seguros (como o Seguro Prestamista, se aplicável) \n• Outras despesas cobradas na operação", align="L")
+
+    pdf.ln(5) # Espaço após a explicação do CET
+    # --- FIM DO NOVO TRECHO ---
     pdf.ln(10) # Espaço no final da seção (pode ser 10 para dar mais respiro)
     # --- FIM DO NOVO BLOCO para o retângulo ---
     # --- INÍCIO DA NOVA SEÇÃO: Observações Importantes ---
