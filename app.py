@@ -65,6 +65,33 @@ def create_simulation_pdf(
 ):
     pdf = PDF(unit="mm", format="A4")
     pdf.add_page()
+    # --- INÍCIO DO BLOCO DO CABEÇALHO (insira aqui) ---
+    # Salva a posição Y inicial do cabeçalho
+    y_start_header = pdf.get_y()
+
+    # Define a fonte para o cabeçalho
+    pdf.set_font("helvetica", "B", 16)
+    pdf.set_text_color(50, 50, 150) # Um azul escuro para o título do cabeçalho
+
+    # Título do Simulador
+    pdf.cell(0, 10, "Simulador Financeiro Empresarial", ln=True, align="C")
+
+    # Seu Nome / Autoria (opcional)
+    pdf.set_font("helvetica", "", 10)
+    pdf.set_text_color(100, 100, 100) # Cor cinza para o subtítulo/autoria
+    pdf.cell(0, 7, "Desenvolvido por: [José Costa Neto/IA Google Gemini]", ln=True, align="C") # Substitua por seu nome
+
+    # Linha divisória para o cabeçalho
+    pdf.ln(5) # Pequeno espaço antes da linha
+    pdf.set_draw_color(150, 150, 150) # Cor cinza para a linha
+    pdf.set_line_width(0.4) # Espessura um pouco maior para a linha do cabeçalho
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+    pdf.ln(10) # Espaço após a linha para o conteúdo principal começar
+
+    # Voltar para as configurações de texto padrão
+    pdf.set_font("helvetica", "", 12)
+    pdf.set_text_color(0, 0, 0) # Preto
+    # --- FIM DO BLOCO DO CABEÇALHO ---
     pdf.set_font("helvetica", "B", 16)
     
     # Título
