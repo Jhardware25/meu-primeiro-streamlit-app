@@ -79,7 +79,7 @@ def create_simulation_pdf(
     # Seu Nome / Autoria (opcional)
     pdf.set_font("helvetica", "", 10)
     pdf.set_text_color(100, 100, 100) # Cor cinza para o subtítulo/autoria
-    pdf.cell(0, 7, "Desenvolvido por: [José Costa Neto/IA Google Gemini]", ln=True, align="C") # Substitua por seu nome
+    pdf.cell(0, 7, "Desenvolvido por: José Costa Neto/IA Google Gemini", ln=True, align="C") # Substitua por seu nome
 
     # Linha divisória para o cabeçalho
     pdf.ln(5) # Pequeno espaço antes da linha
