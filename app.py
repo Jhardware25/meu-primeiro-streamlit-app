@@ -248,50 +248,60 @@ def create_simulation_pdf(
     pdf.ln(5) # Espaço no final da seção
     # --- FIM DO NOVO BLOCO para o retângulo ---
     
-    # Seção CETs
+    # Seção Custo Efetivo Total (CET)
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, "Custo Efetivo Total (CET)", ln=True)
-    # Adiciona uma linha divisória
     pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
-    pdf.ln(2) # Pequeno espaço após a linha
-    # --- INÍCIO DO NOVO BLOCO para o retângulo ---
+    pdf.ln(2)
+
+    # --- INÍCIO DO BLOCO para o retângulo ---
     y_start_cet = pdf.get_y() # Salva a posição Y antes de imprimir o conteúdo da seção
 
     pdf.set_font("helvetica", "", 12)
-    pdf.cell(0, 7, f"CET Bruto Anual: {format_percent(cet_anual_bruto * 100)} a.a.", ln=True)
-    pdf.cell(0, 7, f"CET Bruto Mensal: {format_percent(cet_mensal_bruto * 100)} a.m.", ln=True)
+    pdf.cell(0, 7, f"CET Bruto Anual: {format_percent(cet_anual_bruto * 100)} a.a.", ln=True, align="L")
+    pdf.cell(0, 7, f"CET Bruto Mensal: {format_percent(cet_mensal_bruto * 100)} a.m.", ln=True, align="L")
 
     # Destaque para CET Líquido
     if cet_anual_liquido != 0.0:
-        pdf.set_font("helvetica", "B", 12) # Negrito
-        pdf.set_text_color(0, 100, 0) # Um verde um pouco mais escuro para o CET líquido favorável
-        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Anual: {format_percent(cet_anual_liquido * 100)} a.a.", ln=True)
-        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Mensal: {format_percent(cet_mensal_liquido * 100)} a.m.", ln=True)
-        pdf.set_text_color(0, 0, 0) # Voltar para preto
-        pdf.set_font("helvetica", "", 12) # Voltar para a fonte normal
+        pdf.set_font("helvetica", "B", 12)
+        pdf.set_text_color(0, 100, 0)
+        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Anual: {format_percent(cet_anual_liquido * 100)} a.a.", ln=True, align="L")
+        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Mensal: {format_percent(cet_mensal_liquido * 100)} a.m.", ln=True, align="L")
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("helvetica", "", 12)
     else:
-        pdf.set_font("helvetica", "B", 12) # Manter negrito na mensagem de erro
-        pdf.set_text_color(200, 0, 0) # Vermelho para o erro
-        pdf.cell(0, 7, "CET Líquido: Não foi possível calcular.", ln=True)
-        pdf.set_text_color(0, 0, 0) # Voltar para preto
-        pdf.set_font("helvetica", "", 12) # Voltar para a fonte normal
+        pdf.set_font("helvetica", "B", 12)
+        pdf.set_text_color(200, 0, 0)
+        pdf.cell(0, 7, "CET Líquido: Não foi possível calcular.", ln=True, align="L")
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("helvetica", "", 12)
 
-    y_end_cet = pdf.get_y() # Salva a posição Y após imprimir todo o conteúdo da seção
+    pdf.ln(3) # Pequeno espaço antes do breakdown
 
-    pdf.set_draw_color(200, 200, 200) # Cor cinza claro para a borda
-    pdf.set_line_width(0.2) # Espessura da linha
-    pdf.rect(pdf.l_margin, y_start_cet - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_cet - y_start_cet + 4)
-    # --- INÍCIO DO NOVO TRECHO: BREAKDOWN DO CET ---
+    # --- NOVO LOCAL PARA O TRECHO: BREAKDOWN DO CET (AGORA DENTRO DO RETÂNGULO) ---
     pdf.set_font("helvetica", "B", 10) # Negrito e fonte menor para o título da explicação
-    pdf.cell(0, 7, "O CET inclui:", ln=True, align="L")
-    pdf.set_font("DejaVuSans", "", 10) # <<<<<< AQUI É A MUDANÇA
+    # Usar multi_cell com x e w definidos para alinhar ao conteúdo
+    current_x = pdf.l_margin + 5 # Ajuste o 5mm para o padding desejado
+    cell_width = pdf.w - pdf.l_margin - pdf.r_margin - 10 # Largura total - margens - 2x padding
 
-    pdf.multi_cell(0, 6, "• Juros (taxa de juros do crédito) \n• Tarifas (como a TAC - Tarifa de Abertura de Crédito) \n• Impostos (como o IOF - Imposto sobre Operações Financeiras) \n• Seguros (como o Seguro Prestamista, se aplicável) \n• Outras despesas cobradas na operação", align="L")
+    pdf.set_x(current_x)
+    pdf.cell(cell_width, 7, "O CET inclui:", ln=True, align="L")
 
-    pdf.ln(5) # Espaço após a explicação do CET
+    pdf.set_font("DejaVuSans", "", 10) # Manter DejaVuSans para os bullets
+    pdf.set_x(current_x) # Define X novamente para a lista
+    pdf.multi_cell(cell_width, 6, "• Juros (taxa de juros do crédito) \n• Tarifas (como a TAC - Tarifa de Abertura de Crédito) \n• Impostos (como o IOF - Imposto sobre Operações Financeiras) \n• Seguros (como o Seguro Prestamista, se aplicável) \n• Outras despesas cobradas na operação", align="L")
+
     # --- FIM DO NOVO TRECHO ---
-    pdf.ln(10) # Espaço no final da seção (pode ser 10 para dar mais respiro)
-    # --- FIM DO NOVO BLOCO para o retângulo ---
+
+    y_end_cet = pdf.get_y() # Salva a posição Y APÓS IMPRIMIR TUDO, incluindo o breakdown
+
+    pdf.set_draw_color(200, 200, 200)
+    pdf.set_line_width(0.2)
+    # O retângulo agora engloba tudo, do y_start_cet até o novo y_end_cet
+    pdf.rect(pdf.l_margin, y_start_cet - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_cet - y_start_cet + 4)
+    pdf.ln(10) # Espaço no final da seção CET
+    # --- FIM DO BLOCO para o retângulo ---
+    
     # --- INÍCIO DA NOVA SEÇÃO: Observações Importantes ---
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, "Observações Importantes", ln=True)
