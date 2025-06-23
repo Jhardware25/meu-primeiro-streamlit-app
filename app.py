@@ -65,6 +65,12 @@ def create_simulation_pdf(
 ):
     pdf = PDF(unit="mm", format="A4")
     pdf.add_page()
+    # --- NOVO TRECHO A SER ADICIONADO AQUI ---
+    # Adicionar a fonte DejaVuSans
+    # O argumento 'fname' deve ser o caminho para o seu arquivo .ttf
+    # O argumento 'set_alias' é opcional, mas útil para usar um nome mais simples (ex: 'DejaVu')
+    pdf.add_font('DejaVuSans', '', 'DejaVuSans.ttf', uni=True)
+    # --- FIM DO NOVO TRECHO ---
     # --- INÍCIO DO BLOCO DO CABEÇALHO (insira aqui) ---
     # Salva a posição Y inicial do cabeçalho
     y_start_header = pdf.get_y()
@@ -278,7 +284,7 @@ def create_simulation_pdf(
     # --- INÍCIO DO NOVO TRECHO: BREAKDOWN DO CET ---
     pdf.set_font("helvetica", "B", 10) # Negrito e fonte menor para o título da explicação
     pdf.cell(0, 7, "O CET inclui:", ln=True, align="L")
-    pdf.set_font("helvetica", "", 10) # Fonte normal para a lista
+    pdf.set_font("DejaVuSans", "", 10) # <<<<<< AQUI É A MUDANÇA
 
     pdf.multi_cell(0, 6, "• Juros (taxa de juros do crédito) \n• Tarifas (como a TAC - Tarifa de Abertura de Crédito) \n• Impostos (como o IOF - Imposto sobre Operações Financeiras) \n• Seguros (como o Seguro Prestamista, se aplicável) \n• Outras despesas cobradas na operação", align="L")
 
