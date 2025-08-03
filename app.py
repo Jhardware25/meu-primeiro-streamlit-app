@@ -387,6 +387,28 @@ with st.container(border=True): # Adiciona uma borda visual para agrupar
         taxa_indexador_mensal = (1 + taxa_indexador_anual / 100)**(1/12) - 1
     else:
         taxa_indexador_mensal = 0.0
+# --- Opções de Carência (Novo Bloco) ---
+st.markdown("---") # Linha divisória para separar visualmente
+st.subheader("Opções de Carência")
+
+usar_carencia = st.checkbox("Incluir período de carência na simulação?")
+
+meses_carencia = 0 # Valor padrão para carência
+if usar_carencia:
+    meses_carencia = st.slider(
+        "Selecione a quantidade de meses de carência:",
+        min_value=6,
+        max_value=12,
+        value=6,
+        step=1
+    )
+    st.info(f"Durante a carência de {meses_carencia} meses, o cliente pagará apenas os juros mensais. A amortização do saldo devedor começará após este período.")
+
+# --- FIM DO NOVO BLOCO ---
+
+# --- Expander para Custos Operacionais ---
+
+# ... o restante do seu código para IOF e TAC segue aqui ...
 
 # --- Expander para Custos Operacionais ---
 with st.expander("**Custos Operacionais do Crédito (IOF e TAC)**"):
@@ -482,220 +504,166 @@ st.divider() # Adiciona um divisor visual para separar as entradas do botão
 
 
 # --- BOTÃO DE SIMULAÇÃO ---
-if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use_container_width=True): # Ícone e largura total
+if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use_container_width=True):
     # Feedback visual durante o cálculo
     with st.spinner("Calculando a simulação..."):
         import time
-        time.sleep(1) # Simula um tempo de cálculo. Pode remover ou ajustar o tempo.
-
-    # st.info("DEBUG: Botão 'Simular Operação' clicado e código começando a executar!") # Comentado
+        time.sleep(1)
 
     try:
         # --- INÍCIO: SEÇÃO DE CÁLCULOS DA OPERAÇÃO DE CRÉDITO E APLICAÇÃO ---
 
         # 1. CÁLCULOS INICIAIS
         iof_total = valor_credito * (iof_percentual / 100)
-
-        # --- CÁLCULO DA TAC ---
         tac_valor_calculado = valor_credito * (tac_percentual / 100)
         teto_tac = 10000.00
         tac_valor = min(tac_valor_calculado, teto_tac)
 
-        # st.info(f"DEBUG: IOF Total: {format_brl(iof_total)}") # Comentado
-        # st.info(f"DEBUG: TAC Valor: {format_brl(tac_valor)}") # Comentado
-        # st.info(f"DEBUG: Valor Prestamista: {format_brl(valor_prestamista)}") # Comentado
-
-        # --- LÓGICA DO SEGURO PRESTAMISTA E OUTROS CUSTOS (IOF, TAC, Prestamista) ---
-        valor_total_para_parcela_calculo = valor_credito 
+        # 2. LÓGICA DO SEGURO PRESTAMISTA E OUTROS CUSTOS (IOF, TAC, Prestamista)
+        valor_total_para_parcela_calculo = valor_credito
         valor_liquido_recebido = valor_credito
-
         custos_operacionais_totais = iof_total + tac_valor + valor_prestamista
-        # st.info(f"DEBUG: Total Custos Operacionais: {format_brl(custos_operacionais_totais)}") # Comentado
 
-        # *** LÓGICA DE FINANCIAMENTO/DESCONTO ***
-        if tipo_taxa_credito == "Prefixada": 
-            # SE É PREFIXADA: Custos (IOF, TAC, Prestamista) são FINANCIADOS
+        if tipo_taxa_credito == "Prefixada":
             valor_total_para_parcela_calculo += custos_operacionais_totais
-            # valor_liquido_recebido permanece igual a valor_credito
-
-        else: # SE É PÓS-FIXADA: Custos (IOF, TAC, Prestamista) são DESCONTADOS do valor inicial
-            # valor_total_para_parcela_calculo permanece igual a valor_credito
+        else:
             valor_liquido_recebido -= custos_operacionais_totais
 
-        # st.info(f"DEBUG: Tipo Taxa Crédito: {tipo_taxa_credito}") # Comentado
-        # st.info(f"DEBUG: Valor Total para Parcela (APÓS LÓGICA DE FINANCIAMENTO): {format_brl(valor_total_para_parcela_calculo)}") # Comentado
-        # st.info(f"DEBUG: Valor Líquido Recebido (APÓS LÓGICA DE FINANCIAMENTO): {format_brl(valor_liquido_recebido)}") # Comentado
-
-        # 2. CÁLCULO DA TAXA DE JUROS EFETIVA DO CRÉDITO
+        # 3. CÁLCULO DA TAXA DE JUROS EFETIVA DO CRÉDITO
         if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
             taxa_juros_credito_efetiva_mensal = taxa_juros_pactuada_mensal + taxa_indexador_mensal
         else:
             taxa_juros_credito_efetiva_mensal = taxa_juros_pactuada_mensal
-        # st.info(f"DEBUG: Taxa Juros Crédito Efetiva Mensal: {format_percent(taxa_juros_credito_efetiva_mensal * 100)}") # Comentado
+
+        # 4. CÁLCULO DA PARCELA MENSAL E JUROS TOTAIS (BASE TABLE PRICE)
+        parcela_mensal_credito = 0.0
+        total_juros_pagos_credito = 0.0
+        juros_pagos_na_carencia = 0.0
+
+        if prazo_credito_meses > 0:
+            if usar_carencia and meses_carencia > 0:
+                # Lógica para Simulação com Carência (Juros Pagos)
+                juros_pagos_na_carencia = valor_total_para_parcela_calculo * taxa_juros_credito_efetiva_mensal * meses_carencia
+                prazo_amortizacao = prazo_credito_meses - meses_carencia
                 
-        # 3. CÁLCULO DA PARCELA MENSAL E JUROS TOTAIS (BASE TABLE PRICE)
-        if prazo_credito_meses == 0:
-            parcela_mensal_credito = 0.0
-            total_juros_pagos_credito = 0.0
-        else:
-            try:
+                if prazo_amortizacao > 0:
+                    parcela_mensal_credito = npf.pmt(
+                        taxa_juros_credito_efetiva_mensal,
+                        prazo_amortizacao,
+                        -valor_total_para_parcela_calculo
+                    )
+                    juros_fase_amortizacao = (parcela_mensal_credito * prazo_amortizacao) - valor_total_para_parcela_calculo
+                    total_juros_pagos_credito = juros_pagos_na_carencia + juros_fase_amortizacao
+                else:
+                    parcela_mensal_credito = juros_pagos_na_carencia / meses_carencia
+                    total_juros_pagos_credito = juros_pagos_na_carencia
+            else:
+                # Lógica de cálculo da Tabela Price sem carência (SEU CÓDIGO ORIGINAL)
                 parcela_mensal_credito = npf.pmt(
                     taxa_juros_credito_efetiva_mensal,
                     prazo_credito_meses,
-                    -valor_total_para_parcela_calculo # Usa o valor ajustado para cálculo da parcela
+                    -valor_total_para_parcela_calculo
                 )
                 total_juros_pagos_credito = (parcela_mensal_credito * prazo_credito_meses) - valor_total_para_parcela_calculo
-            except Exception as e:
-                st.error(f"Erro no cálculo da parcela do crédito: {e}. Verifique as taxas e prazos.")
-                parcela_mensal_credito = 0.0
-                total_juros_pagos_credito = 0.0
-        # st.info(f"DEBUG: Parcela Mensal Crédito: {format_brl(parcela_mensal_credito)}") # Comentado
-        # st.info(f"DEBUG: Total Juros Pagos Crédito: {format_brl(total_juros_pagos_credito)}") # Comentado
-                
-        # 4. CÁLCULOS DA APLICAÇÃO
+
+        # 5. CÁLCULOS DA APLICAÇÃO (sempre fora do if da carência)
         rendimento_bruto_total_aplicacao = valor_aplicacao * ((1 + taxa_rendimento_aplicacao_mensal)**prazo_credito_meses - 1)
         ir_total_aplicacao = rendimento_bruto_total_aplicacao * ir_aliquota
         rendimento_liquido_total_aplicacao = rendimento_bruto_total_aplicacao - ir_total_aplicacao
         capital_total_acumulado_aplicacao = valor_aplicacao + rendimento_liquido_total_aplicacao
-        # st.info(f"DEBUG: Rendimento Líquido Total Aplicação: {format_brl(rendimento_liquido_total_aplicacao)}") # Comentado
 
-        # 5. CÁLCULO DO GANHO LÍQUIDO TOTAL
+        # 6. CÁLCULO DO GANHO LÍQUIDO TOTAL
         ganho_liquido_total_operacao = rendimento_liquido_total_aplicacao - total_juros_pagos_credito
-
-        # 6. CÁLCULO DO CET (Custo Efetivo Total)
-        fluxo_caixa_cet_cliente = [valor_liquido_recebido] + [-parcela_mensal_credito] * prazo_credito_meses
-
-        try:
-            cet_mensal = npf.irr(fluxo_caixa_cet_cliente)
-            cet_anual = ((1 + cet_mensal)**12 - 1) * 100 # Em % ao ano
-        except Exception:
-            cet_anual = float('nan') # Usar NaN para indicar que não foi possível calcular
-            # ... (SEUS CÁLCULOS EXISTENTES TERMINAM AQUI, COMO juros_totais_credito, valor_total_pago_credito, rendimento_liquido_total_aplicacao, custo_total_operacao, ganho_liquido_total_operacao) ...
-
-        
 
         # 7. GERAÇÃO DOS DADOS MENSAIS PARA OS GRÁFICOS
         historico = []
-        
-        saldo_atual_credito = valor_total_para_parcela_calculo # <-- USE AQUI O VALOR AJUSTADO
+        saldo_atual_credito = valor_total_para_parcela_calculo
         saldo_atual_aplicacao = valor_aplicacao
 
         for mes_idx in range(1, prazo_credito_meses + 1):
-            # Crédito
-            juros_mes_credito = saldo_atual_credito * taxa_juros_credito_efetiva_mensal
-            amortizacao_mes = parcela_mensal_credito - juros_mes_credito
+            # Lógica para carência
+            if usar_carencia and mes_idx <= meses_carencia:
+                juros_mes_credito = saldo_atual_credito * taxa_juros_credito_efetiva_mensal
+                amortizacao_mes = 0 # Sem amortização na carência
+                parcela_mensal_credito_real = juros_mes_credito # A parcela é só o juros
+            else:
+                juros_mes_credito = saldo_atual_credito * taxa_juros_credito_efetiva_mensal
+                amortizacao_mes = parcela_mensal_credito - juros_mes_credito
+                parcela_mensal_credito_real = parcela_mensal_credito # A parcela é a fixa
             
             saldo_atual_credito = max(0, saldo_atual_credito - amortizacao_mes)
 
             # Aplicação
             rendimento_mes_bruto = saldo_atual_aplicacao * taxa_rendimento_aplicacao_mensal
             rendimento_liquido_mensal_aplicacao = rendimento_mes_bruto * (1 - ir_aliquota)
-            saldo_atual_aplicacao += rendimento_mes_bruto # Adiciona o rendimento bruto para compor o saldo
-            
+            saldo_atual_aplicacao += rendimento_mes_bruto
 
             historico.append({
                 'Mês': mes_idx,
                 'Saldo Devedor Credito': saldo_atual_credito,
-                'Parcela Mensal Credito': parcela_mensal_credito,
-                'Rendimento Liquido Mensal da Aplicacao': rendimento_liquido_mensal_aplicacao, # Limpo
+                'Parcela Mensal Credito': parcela_mensal_credito_real, # Use a parcela real do mês
+                'Rendimento Liquido Mensal da Aplicacao': rendimento_liquido_mensal_aplicacao,
                 'Saldo Aplicacao Garantia': saldo_atual_aplicacao
             })
 
         df_evolucao = pd.DataFrame(historico)
-        df_fluxo_mensal = pd.DataFrame(historico) # df_fluxo_mensal é uma cópia de df_evolucao, ok.
+        df_fluxo_mensal = df_evolucao.copy()
 
-        # st.info(f"DEBUG: df_evolucao está vazia? {df_evolucao.empty}") # Comentado
-        # st.info(f"DEBUG: df_evolucao.head():\n{df_evolucao.head().to_string()}") # Comentado
-        # st.info(f"DEBUG: df_fluxo_mensal está vazia? {df_fluxo_mensal.empty}") # Comentado
-        # st.dataframe(df_evolucao.head()) # Comentado
-        # st.dataframe(df_fluxo_mensal.head()) # Comentado
-
-        # --- NOVO CÁLCULO DO CET ---
-        # 1. Fluxo de Caixa para CET Bruto (sem descontar a aplicação)
-        # Início: Valor do crédito líquido de custos iniciais
+        # 8. CÁLCULO DO CET (Custo Efetivo Total)
+        # Fluxo de Caixa para CET Bruto
         fluxo_bruto = [valor_credito - custos_operacionais_totais]
-        # Meses seguintes: Parcelas do crédito
         fluxo_bruto.extend([-p for p in df_evolucao["Parcela Mensal Credito"].tolist()])
-
-        # Calcula a TIR (Taxa Interna de Retorno)
         try:
             cet_mensal_bruto = npf.irr(fluxo_bruto)
-            # Para evitar erros de calculo com valores muito baixos ou zeros
             if isinstance(cet_mensal_bruto, (int, float)) and cet_mensal_bruto > -1:
                 cet_anual_bruto = (1 + cet_mensal_bruto)**12 - 1
             else:
-                cet_mensal_bruto = 0.0 # Define como zero se o resultado não for numérico válido
-                cet_anual_bruto = 0.0
-        except ValueError: # npf.irr retorna ValueError se não encontrar solução
-            cet_mensal_bruto = 0.0
-            cet_anual_bruto = 0.0
+                cet_mensal_bruto, cet_anual_bruto = 0.0, 0.0
+        except ValueError:
+            cet_mensal_bruto, cet_anual_bruto = 0.0, 0.0
 
-
-        # 2. Fluxo de Caixa para CET Líquido (descontando o rendimento da aplicação)
-        # Início: Valor do crédito líquido de custos iniciais
+        # Fluxo de Caixa para CET Líquido
         fluxo_liquido = [valor_credito - custos_operacionais_totais]
-        # Meses seguintes: (Parcela do Crédito - Rendimento Líquido da Aplicação)
-        # Se a parcela for menor que o rendimento, o fluxo é positivo para o cliente
         for i in range(prazo_credito_meses):
             fluxo_liquido.append(-(df_evolucao.loc[i, "Parcela Mensal Credito"] - df_evolucao.loc[i, "Rendimento Liquido Mensal da Aplicacao"]))
-
         try:
             cet_mensal_liquido = npf.irr(fluxo_liquido)
-            # Para evitar erros de calculo com valores muito baixos ou zeros
             if isinstance(cet_mensal_liquido, (int, float)) and cet_mensal_liquido > -1:
                 cet_anual_liquido = (1 + cet_mensal_liquido)**12 - 1
             else:
-                cet_mensal_liquido = 0.0 # Define como zero se o resultado não for numérico válido
-                cet_anual_liquido = 0.0
+                cet_mensal_liquido, cet_anual_liquido = 0.0, 0.0
         except ValueError:
-            cet_mensal_liquido = 0.0
-            cet_anual_liquido = 0.0
+            cet_mensal_liquido, cet_anual_liquido = 0.0, 0.0
 
-        # ... (O restante do seu código de exibição dos resultados e gráficos virá logo abaixo) ...
-        # st.info(f"DEBUG: CET Anual: {f'{format_percent(cet_anual)} a.a.' if not pd.isna(cet_anual) else 'Não Calculado'}") # Comentado
-
-        # --- FIM DA SEÇÃO DE CÁLCULOS ---
+        # --- FIM: SEÇÃO DE CÁLCULOS ---
 
         # --- INÍCIO: SEÇÃO DE EXIBIÇÃO DOS RESULTADOS ---
         st.header("Resultados da Simulação:")
-        # st.info("DEBUG: Iniciando exibição dos resultados...") # Comentado
-
+        
         st.subheader("Resumo Financeiro da Operação:")
         col1, col2, col3 = st.columns(3)
-                            
-        with col1:      
+        with col1:
             st.metric("Valor Líquido Recebido", format_brl(valor_liquido_recebido))
-            st.metric("Parcela Mensal do Crédito", format_brl(parcela_mensal_credito))
+            st.metric("Parcela Mensal do Crédito", format_brl(df_evolucao['Parcela Mensal Credito'].mean()))
             st.metric("Total de Juros Pagos no Crédito", format_brl(total_juros_pagos_credito))
-
         with col2:
             st.metric("Rendimento Bruto Total da Aplicação", format_brl(rendimento_bruto_total_aplicacao))
             st.metric("Imposto de Renda Retido", format_brl(ir_total_aplicacao))
             st.metric("Rendimento Líquido Total", format_brl(rendimento_liquido_total_aplicacao))
-
         with col3:
             st.metric("Ganho Líquido Total da Operação", format_brl(ganho_liquido_total_operacao))
-            
-        st.subheader("Resumo Financeiro Detalhado:")
-        st.write(f"- **Valor do Crédito Liberado:** {format_brl(valor_credito)}") # Adicionado para clareza
-
-        # Exibição dos Custos Iniciais
-        if iof_total > 0: # Assumindo que iof_total é calculado
+        
+        st.subheader("Detalhes da Operação:")
+        st.write(f"- **Valor do Crédito Liberado:** {format_brl(valor_credito)}")
+        if iof_total > 0:
             st.write(f"- **Imposto sobre Operações Financeiras (IOF):** {format_brl(iof_total)}")
         if tac_valor > 0:
             st.write(f"- **Tarifa de Abertura de Crédito (TAC):** {format_brl(tac_valor)}")
-        if valor_prestamista > 0: # Assumindo que valor_prestamista é calculado/obtido
+        if valor_prestamista > 0:
             st.write(f"- **Seguro Prestamista:** {format_brl(valor_prestamista)}")
-        
-        # NOVO CÁLCULO E EXIBIÇÃO DA PARCELA LÍQUIDA
-        # Certifique-se que df_evolucao e 'Parcela Mensal Credito'/'Rendimento Liquido Mensal da Aplicacao' estão disponíveis
-        parcela_mensal_credito_media = df_evolucao['Parcela Mensal Credito'].mean()
-        parcela_mensal_liquida_media = (df_evolucao['Parcela Mensal Credito'] - df_evolucao['Rendimento Liquido Mensal da Aplicacao']).mean()
 
-        st.write(f"- **Parcela Mensal do Crédito:** {format_brl(parcela_mensal_credito_media)}")
-        st.write(f"- **Parcela Mensal do Crédito (com desconto da Aplicação):** **{format_brl(parcela_mensal_liquida_media)}**")    
-
-        # Outras Informações Importantes (mantidas ou reorganizadas)
+        st.write(f"- **Parcela Mensal do Crédito (média):** {format_brl(df_evolucao['Parcela Mensal Credito'].mean())}")
+        st.write(f"- **Parcela Mensal do Crédito (com desconto da Aplicação):** **{format_brl((df_evolucao['Parcela Mensal Credito'] - df_evolucao['Rendimento Liquido Mensal da Aplicacao']).mean())}**")
         st.write(f"- **Juros Totais Pagos no Crédito:** {format_brl(total_juros_pagos_credito)}")
         st.write(f"- **Rendimento Bruto Total da Aplicação:** {format_brl(rendimento_bruto_total_aplicacao)}")
         st.write(f"- **Imposto de Renda Retido na Aplicação:** {format_brl(ir_total_aplicacao)}")
@@ -703,90 +671,56 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         st.write(f"- **Capital Total Acumulado ao Final do Contrato:** **{format_brl(capital_total_acumulado_aplicacao)}**")
         st.write(f"- **Ganho Líquido Total da Operação (Rendimento Líquido - Juros Pagos):** **{format_brl(ganho_liquido_total_operacao)}**")
 
-# ... (Seu bloco de CET Bruto/Líquido virá logo após este bloco, como já está) ...
-
-        # ... (SEUS RESUMOS FINANCEIROS ATUAIS TERMINAM AQUI, como st.write(f"**Rendimento Líquido Total da Aplicação:** {format_brl(rendimento_liquido_total_aplicacao)}") ) ...
-
-        # --- NOVO: Exibição dos CETs ---
-        st.markdown("---") # Separador para o CET
+        st.markdown("---")
         st.subheader("Custo Efetivo Total (CET):")
-        
-        # Exibindo o CET Bruto
-        if cet_anual_bruto != 0.0: # Validação simples para IRR válido
+        if cet_anual_bruto != 0.0:
             st.write(f"**Custo Efetivo Total (CET) Bruto Anual:** {format_percent(cet_anual_bruto * 100)} a.a.")
             st.write(f"**Custo Efetivo Total (CET) Bruto Mensal:** {format_percent(cet_mensal_bruto * 100)} a.m.")
         else:
             st.warning("Não foi possível calcular o CET Bruto. Verifique os valores de entrada ou o fluxo de caixa.")
-
-        # Exibindo o CET Líquido (descontado o juros da aplicação)
-        if cet_anual_liquido != 0.0: # Validação simples para IRR válido
+        if cet_anual_liquido != 0.0:
             st.write(f"**Custo Efetivo Total (CET) Líquido (com ganho da aplicação) Anual:** {format_percent(cet_anual_liquido * 100)} a.a.")
             st.write(f"**Custo Efetivo Total (CET) Líquido (com ganho da aplicação) Mensal:** {format_percent(cet_mensal_liquido * 100)} a.m.")
         else:
             st.warning("Não foi possível calcular o CET Líquido. Verifique os valores de entrada ou o fluxo de caixa.")
-        st.markdown("---") # Separador
+        st.markdown("---")
 
-        # ... (A "Lógica da Mensagem Final" e os gráficos vêm logo abaixo) ...
-                           
-                                  
-        # Lógica da Mensagem Final
         if ganho_liquido_total_operacao >= 0:
             st.success("🎉 Esta operação de crédito, considerando o rendimento da sua aplicação, resulta em um **ganho líquido total** para você!")
             st.info(f"""
                 💡 Você não apenas cobriu os juros e custos do crédito com sua aplicação, como também obteve um **ganho de {format_brl(ganho_liquido_total_operacao)}**!
                 Isso demonstra a **vantagem de usar sua aplicação como garantia** para otimizar seus custos de crédito ao máximo.
                 """)
-        
         else:
             st.warning("⚠️ Esta operação de crédito, mesmo com o rendimento da sua aplicação, resulta em um **custo líquido total**.")
             st.info("O rendimento gerado pela sua aplicação foi crucial! Ele cobriu parte dos juros do seu crédito, resultando em uma redução significativa no valor final que você pagou.")
 
-
-        # --- Exibição dos Gráficos ---
         st.subheader("📊 Evolução Financeira ao Longo do Contrato")
         if not df_evolucao.empty:
-            fig_saldo = px.line(df_evolucao, x="Mês", y=["Saldo Devedor Credito", "Saldo Aplicacao Garantia"], # CORRIGIDO O FECHAMENTO DO PARÊNTESE E NOMES
+            fig_saldo = px.line(df_evolucao, x="Mês", y=["Saldo Devedor Credito", "Saldo Aplicacao Garantia"],
                                 title='Evolução do Saldo Devedor do Crédito vs. Saldo da Aplicação em Garantia',
-                                labels={
-                                    "value": "Valor (R$)",
-                                    "variable": "Ativo"
-                                },
+                                labels={"value": "Valor (R$)", "variable": "Ativo"},
                                 line_shape="spline",
-                                height=400
-                                ) # <-- Parenteses final adicionado AQUI
-                                            
+                                height=400)
             fig_saldo.update_layout(hovermode="x unified", legend_title_text='Tipo')
             fig_saldo.update_xaxes(showgrid=True, zeroline=True)
             fig_saldo.update_yaxes(showgrid=True, zeroline=True)
             st.plotly_chart(fig_saldo, use_container_width=True)
-        else:
-            st.info("Não é possível gerar gráficos para um prazo de contrato de 0 meses.")
 
-        # CORRIGIDO O 'y' PARA USAR NOMES DE COLUNA LIMPOS
-        if not df_fluxo_mensal.empty:
-            fig_fluxo = px.bar(df_fluxo_mensal, x='Mês', y=['Parcela Mensal Credito', 'Rendimento Liquido Mensal da Aplicacao'], # <--- NOMES DE COLUNAS CORRIGIDOS AQUI
+            fig_fluxo = px.bar(df_fluxo_mensal, x='Mês', y=['Parcela Mensal Credito', 'Rendimento Liquido Mensal da Aplicacao'],
                                 title='Parcela Mensal do Crédito vs. Rendimento Líquido Mensal da Aplicação',
-                                labels={
-                                    "value": "Valor (R$)",
-                                    "variable": "Tipo de Fluxo"
-                                },
+                                labels={"value": "Valor (R$)", "variable": "Tipo de Fluxo"},
                                 barmode='group',
                                 height=400,
-                                color_discrete_map={
-                                    'Parcela Mensal Credito': 'red', # <--- NOMES DE COLUNAS CORRIGIDOS AQUI
-                                    'Rendimento Liquido Mensal da Aplicacao': 'green' # <--- NOMES DE COLUNAS CORRIGIDOS AQUI
-                                }
+                                color_discrete_map={'Parcela Mensal Credito': 'red', 'Rendimento Liquido Mensal da Aplicacao': 'green'}
                             )
             fig_fluxo.update_layout(hovermode="x unified", legend_title_text='Fluxo')
             fig_fluxo.update_xaxes(showgrid=True, zeroline=True)
             fig_fluxo.update_yaxes(showgrid=True, zeroline=True)
             st.plotly_chart(fig_fluxo, use_container_width=True)
-            
-            # <<<--- COLE O BLOCO DAS "OPÇÕES DE EXPORTAÇÃO" AQUI ---
 
-            st.markdown("---") # Separador para o PDF
+            st.markdown("---")
             st.subheader("Opções de Exportação:")
-
             pdf_bytes = create_simulation_pdf(
                 valor_credito, prazo_credito_meses, taxa_juros_pactuada_mensal,
                 tipo_taxa_credito, taxa_indexador_mensal,
@@ -796,7 +730,6 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                 cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
                 total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao
             )
-
             st.download_button(
                 label="⬇️ Baixar Resumo em PDF",
                 data=pdf_bytes,
@@ -804,16 +737,13 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                 mime="application/pdf",
                 help="Clique para baixar um resumo completo da simulação em formato PDF."
             )
-            # --- FIM DO BLOCO DO BOTÃO DE DOWNLOAD ---
 
-             
-        # ... (Qualquer outro código que você tenha após os resultados) ...
-        # st.success("DEBUG: Simulação concluída com sucesso! (Mensagem final)") # Comentado
-        
-    except Exception as e: # <--- ESTE EXCEPT ESTÁ ALINHADO CORRETAMENTE COM O 'try:'
+    except Exception as e:
+        # CORREÇÃO AQUI: as linhas abaixo DEVEM ser indentadas
         st.error(f"Ocorreu um erro durante a simulação: {e}")
-        st.warning("Por favor, verifique os dados inseridos e tente novamente.") 
+        st.warning("Por favor, verifique os dados inseridos e tente novamente.")
 
+# --- FIM DO BOTÃO ---
         # ... (Seu código existente de exibição de resultados, gráficos, etc.) ...
 
                 
