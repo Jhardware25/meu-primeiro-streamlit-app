@@ -449,8 +449,8 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         # --- INÍCIO: SEÇÃO DE CÁLCULOS DA OPERAÇÃO DE CRÉDITO E APLICAÇÃO ---
 
         # 1. CÁLCULOS INICIAIS
-        iof_total = valor_credito * (iof_percentual / 100)
         iof_percentual_adicional = 0.0038
+        iof_total = valor_credito * (iof_percentual / 100)
         tac_valor_calculado = valor_credito * (tac_percentual / 100)
         teto_tac = 10000.00
         tac_valor = min(tac_valor_calculado, teto_tac)
@@ -472,15 +472,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
             }
         )
         df_evolucao.loc[0, "Saldo Devedor Credito"] = valor_credito
-        
-        # Lógica para simular com ou sem aplicação financeira
-        if not simular_sem_aplicacao_financeira:
-            df_evolucao.loc[0, "Saldo Aplicacao Garantia"] = valor_aplicacao
-        else:
-            df_evolucao.loc[0, "Saldo Aplicacao Garantia"] = 0.0
-            valor_aplicacao = 0.0
-            taxa_rendimento_aplicacao_mensal = 0.0
-            ir_aliquota = 0.0
+        df_evolucao.loc[0, "Saldo Aplicacao Garantia"] = valor_aplicacao
         
         parcela_mensal_credito_real = 0.0
 
@@ -511,18 +503,12 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
 
             saldo_devedor_credito = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"] - amortizacao_mensal
 
-            # Cálculo da Aplicação (condicional)
-            if not simular_sem_aplicacao_financeira:
-                saldo_aplicacao_garantia = df_evolucao.loc[mes - 1, "Saldo Aplicacao Garantia"]
-                rendimento_bruto_mensal_aplicacao = saldo_aplicacao_garantia * taxa_rendimento_aplicacao_mensal
-                ir_mensal_aplicacao = rendimento_bruto_mensal_aplicacao * ir_aliquota
-                rendimento_liquido_mensal_aplicacao = rendimento_bruto_mensal_aplicacao - ir_mensal_aplicacao
-                saldo_aplicacao_garantia += rendimento_liquido_mensal_aplicacao
-            else:
-                rendimento_bruto_mensal_aplicacao = 0.0
-                ir_mensal_aplicacao = 0.0
-                rendimento_liquido_mensal_aplicacao = 0.0
-                saldo_aplicacao_garantia = 0.0
+            # Cálculo da Aplicação
+            saldo_aplicacao_garantia = df_evolucao.loc[mes - 1, "Saldo Aplicacao Garantia"]
+            rendimento_bruto_mensal_aplicacao = saldo_aplicacao_garantia * taxa_rendimento_aplicacao_mensal
+            ir_mensal_aplicacao = rendimento_bruto_mensal_aplicacao * ir_aliquota
+            rendimento_liquido_mensal_aplicacao = rendimento_bruto_mensal_aplicacao - ir_mensal_aplicacao
+            saldo_aplicacao_garantia += rendimento_liquido_mensal_aplicacao
 
             df_evolucao.loc[mes, "Saldo Devedor Credito"] = saldo_devedor_credito
             df_evolucao.loc[mes, "Juros Mensal Credito"] = juros_mensal_credito
@@ -539,12 +525,9 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         capital_total_acumulado_aplicacao = df_evolucao.loc[prazo_credito_meses, "Saldo Aplicacao Garantia"]
 
         # 3. CÁLCULO DO GANHO LÍQUIDO E CET
-        if not simular_sem_aplicacao_financeira:
-            ganho_liquido_total_operacao = (
-                capital_total_acumulado_aplicacao - valor_aplicacao
-            ) - (total_juros_pagos_credito + custos_operacionais_totais - (valor_aplicacao * iof_percentual_adicional))
-        else:
-            ganho_liquido_total_operacao = -(total_juros_pagos_credito + custos_operacionais_totais)
+        ganho_liquido_total_operacao = (
+            capital_total_acumulado_aplicacao - valor_aplicacao
+        ) - (total_juros_pagos_credito + custos_operacionais_totais - (valor_aplicacao * iof_percentual_adicional))
 
         # CÁLCULO DO CET BRUTO
         cet_mensal_bruto = -npf.rate(
@@ -555,30 +538,23 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         )
         cet_anual_bruto = ((1 + cet_mensal_bruto) ** 12) - 1
         
-        # CÁLCULO DO CET LÍQUIDO (CONDICIONAL)
-        if not simular_sem_aplicacao_financeira and valor_aplicacao > 0:
-            cet_mensal_liquido = -npf.rate(
-                nper=prazo_credito_meses,
-                pmt=df_evolucao.loc[1:, 'Parcela Mensal Credito'].mean() - df_evolucao.loc[1:, 'Rendimento Liquido Mensal da Aplicacao'].mean(),
-                pv=valor_liquido_recebido,
-                fv=-capital_total_acumulado_aplicacao
-            )
-            cet_anual_liquido = ((1 + cet_mensal_liquido) ** 12) - 1
-        else:
-            cet_mensal_liquido = 0.0
-            cet_anual_liquido = 0.0
-
+        # CÁLCULO DO CET LÍQUIDO
+        cet_mensal_liquido = -npf.rate(
+            nper=prazo_credito_meses,
+            pmt=df_evolucao.loc[1:, 'Parcela Mensal Credito'].mean() - df_evolucao.loc[1:, 'Rendimento Liquido Mensal da Aplicacao'].mean(),
+            pv=valor_liquido_recebido,
+            fv=-capital_total_acumulado_aplicacao
+        )
+        cet_anual_liquido = ((1 + cet_mensal_liquido) ** 12) - 1
+        
         # --- FIM DOS CÁLCULOS ---
         st.success("Simulação realizada com sucesso!")
 
-        # --- EXIBIÇÃO DOS RESULTADOS (AJUSTADO) ---
+        # --- EXIBIÇÃO DOS RESULTADOS ---
         st.subheader("Resumo Financeiro da Operação")
         st.write(f"**Valor Líquido Recebido pelo Cliente:** {format_brl(valor_liquido_recebido)}")
-        
-        if not simular_sem_aplicacao_financeira:
-            st.write(f"**Ganho Líquido Total com a Aplicação:** {format_brl(rendimento_liquido_total_aplicacao)}")
-            st.write(f"**Total de Impostos (IR) sobre a Aplicação:** {format_brl(ir_total_aplicacao)}")
-        
+        st.write(f"**Ganho Líquido Total com a Aplicação:** {format_brl(rendimento_liquido_total_aplicacao)}")
+        st.write(f"**Total de Impostos (IR) sobre a Aplicação:** {format_brl(ir_total_aplicacao)}")
         st.write(f"**Total de Juros Pagos no Crédito:** {format_brl(total_juros_pagos_credito)}")
         st.write(f"**Total de Custos Iniciais (IOF, TAC, Seguro):** {format_brl(custos_operacionais_totais)}")
         
@@ -588,7 +564,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         else:
             st.markdown(f"<h3 style='color:red;'>Custo Líquido Total da Operação: {format_brl(abs(ganho_liquido_total_operacao))}</h3>", unsafe_allow_html=True)
         st.write("---")
-        
+
         # --- BOTÃO PARA GERAR O PDF ---
         with st.spinner("Gerando PDF..."):
             pdf_bytes = create_simulation_pdf(
