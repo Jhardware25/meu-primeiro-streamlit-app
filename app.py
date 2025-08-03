@@ -223,28 +223,43 @@ def create_simulation_pdf(
     pdf.rect(pdf.l_margin, y_start_observacoes - 2, pdf.w - pdf.l_margin - pdf.r_margin, y_end_observacoes - y_start_observacoes + 4)
     pdf.ln(5)
     pdf.set_font("helvetica", "I", 10)
-    # --- NOVO BLOCO: TABELA DE EVOLUÇÃO ---
-    pdf.add_page() # Adiciona uma nova página para a tabela
+    # --- Seção 2: Tabela de Evolução com Quebra de Página ---
+    pdf.add_page()
     pdf.set_font("helvetica", "B", 16)
     pdf.cell(0, 10, "Evolução Mensal da Operação", ln=True, align="C")
     pdf.ln(5)
-    pdf.set_font("helvetica", "B", 10)
-    pdf.set_fill_color(220, 220, 220) # Cor cinza para o cabeçalho da tabela
-    pdf.cell(20, 10, "Mês", 1, 0, 'C', 1)
-    pdf.cell(45, 10, "Parcela Crédito (R$)", 1, 0, 'C', 1)
-    pdf.cell(45, 10, "Saldo Devedor (R$)", 1, 0, 'C', 1)
-    pdf.cell(45, 10, "Rendimento Aplic. (R$)", 1, 0, 'C', 1)
-    pdf.cell(45, 10, "Saldo Aplic. (R$)", 1, 1, 'C', 1)
-    pdf.set_font("helvetica", "", 8) # Fonte menor para os dados da tabela
+    
+    # Cabeçalho da tabela
+    def draw_table_header():
+        pdf.set_font("helvetica", "B", 10)
+        pdf.set_fill_color(220, 220, 220)
+        # Largura das células ajustada
+        pdf.cell(20, 10, "Mês", 1, 0, 'C', 1)
+        pdf.cell(40, 10, "Parcela Crédito (R$)", 1, 0, 'C', 1)
+        pdf.cell(40, 10, "Saldo Devedor (R$)", 1, 0, 'C', 1)
+        pdf.cell(40, 10, "Rendimento Aplic. (R$)", 1, 0, 'C', 1)
+        pdf.cell(40, 10, "Saldo Aplic. (R$)", 1, 1, 'C', 1)
+    
+    draw_table_header()
+    
+    pdf.set_font("helvetica", "", 8)
     for _, row in df_evolucao.iterrows():
+        # Lógica de quebra de página: se não houver espaço suficiente para a próxima linha
+        if pdf.get_y() > 250:
+            pdf.add_page()
+            draw_table_header()
+            pdf.set_font("helvetica", "", 8)
+        
+        # Largura das células ajustada
         pdf.cell(20, 8, str(row['Mês']), 1, 0, 'C')
-        pdf.cell(45, 8, format_brl(row['Parcela Mensal Credito']), 1, 0, 'R')
-        pdf.cell(45, 8, format_brl(row['Saldo Devedor Credito']), 1, 0, 'R')
-        pdf.cell(45, 8, format_brl(row['Rendimento Liquido Mensal da Aplicacao']), 1, 0, 'R')
-        pdf.cell(45, 8, format_brl(row['Saldo Aplicacao Garantia']), 1, 1, 'R')
-    # --- FIM DO NOVO BLOCO ---
+        pdf.cell(40, 8, format_brl(row['Parcela Mensal Credito']), 1, 0, 'R')
+        pdf.cell(40, 8, format_brl(row['Saldo Devedor Credito']), 1, 0, 'R')
+        pdf.cell(40, 8, format_brl(row['Rendimento Liquido Mensal da Aplicacao']), 1, 0, 'R')
+        pdf.cell(40, 8, format_brl(row['Saldo Aplicacao Garantia']), 1, 1, 'R')
+    
     return bytes(pdf.output(dest='S'))
-
+    # --- FIM DO NOVO BLOCO ---
+    
 # --- NOVO: Configuração da página e ícone ---
 st.set_page_config(layout="wide", page_title="Simulador de Crédito e Aplicação", page_icon="💰")
 
