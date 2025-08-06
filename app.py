@@ -73,7 +73,6 @@ def create_simulation_pdf(
     pdf.set_font("helvetica", "", 12)
     pdf.cell(0, 10, f"Data da Simulação: {pd.to_datetime('today').strftime('%d/%m/%Y')}", ln=True, align="C")
     pdf.ln(10)
-
     pdf.set_font("helvetica", "B", 14)
     pdf.cell(0, 10, "Detalhes do Crédito", ln=True)
     pdf.line(pdf.get_x(), pdf.get_y(), pdf.get_x() + pdf.w - pdf.r_margin - pdf.l_margin, pdf.get_y())
@@ -365,7 +364,6 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
             fv=-capital_total_acumulado_aplicacao
         )
         cet_anual_liquido = ((1 + cet_mensal_liquido) ** 12) - 1
-
         st.success("Simulação realizada com sucesso!")
 
         # --- EXIBIÇÃO DOS RESULTADOS ---
