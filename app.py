@@ -531,7 +531,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         # CÁLCULO DO CET BRUTO
         cet_mensal_bruto = -npf.rate(
             nper=prazo_credito_meses,
-            pmt=-df_evolucao['Parcela Mensal Credito'].mean(), # O PMT deve ser negativo
+            pmt= df_evolucao['Parcela Mensal Credito'].mean(), 
             pv=valor_liquido_recebido,
             fv=0
         )
