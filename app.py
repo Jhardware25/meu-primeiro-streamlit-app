@@ -3,7 +3,7 @@ import pandas as pd
 import numpy_financial as npf
 import plotly.express as px
 import base64
-from fpdf import FPDF # <-- NOVA IMPORTAÇÃO AQUI!
+from fpdf import FPDF 
 # Defina uma subclasse para personalizar o rodapé
 class PDF(FPDF):
     def footer(self):
@@ -46,12 +46,6 @@ def format_percent(value):
     """Formata um valor numérico para o padrão percentual brasileiro (X,XX%)."""
     return f"{value:.2f}".replace(".", ",") + '%'
 
-# --- SUAS FUNÇÕES EXISTENTES ---
-def format_brl(value):
-    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-def format_percent(value):
-    return f"{value:,.2f}%".replace(",", "X").replace(".", ",").replace("X", ".")
 
 # --- NOVA FUNÇÃO PARA GERAR O PDF ---
 def create_simulation_pdf(
@@ -62,7 +56,7 @@ def create_simulation_pdf(
     df_evolucao, custos_operacionais_totais, rendimento_liquido_total_aplicacao,
     cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
     total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao,
-    usar_carencia, meses_carencia
+    usar_carencia, meses_carencia, valor_liquido_recebido
 ):
     pdf = PDF(unit="mm", format="A4")
     pdf.add_page()
@@ -98,11 +92,8 @@ def create_simulation_pdf(
     pdf.cell(0, 7, f"Tipo de Taxa: {tipo_taxa_credito}", ln=True)
     if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
         pdf.cell(0, 7, f"Taxa do Indexador Mensal: {format_percent(taxa_indexador_mensal * 100)} a.m.", ln=True)
-    valor_liquido_recebido_final = valor_credito
-    if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
-        valor_liquido_recebido_final = valor_credito - custos_operacionais_totais
     pdf.set_font("helvetica", "B", 12)
-    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido_final)}", ln=True, align="L")
+    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido)}", ln=True, align="L")
     pdf.set_font("helvetica", "", 12)
     y_end_credito = pdf.get_y()
     pdf.set_draw_color(200, 200, 200)
@@ -185,9 +176,15 @@ def create_simulation_pdf(
     pdf.cell(0, 7, f"CET Bruto Mensal: {format_percent(cet_mensal_bruto * 100)} a.m.", ln=True, align="L")
     if cet_anual_liquido != 0.0:
         pdf.set_font("helvetica", "B", 12)
-        pdf.set_text_color(0, 100, 0)
-        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Anual: {format_percent(cet_anual_liquido * 100)} a.a.", ln=True, align="L")
-        pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Mensal: {format_percent(cet_mensal_liquido * 100)} a.m.", ln=True, align="L")
+        if cet_anual_liquido > 0:
+            pdf.set_text_color(200, 0, 0)
+            pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Anual: {format_percent(cet_anual_liquido * 100)} a.a.", ln=True, align="L")
+            pdf.cell(0, 7, f"CET Líquido (com ganho da aplicação) Mensal: {format_percent(cet_mensal_liquido * 100)} a.m.", ln=True, align="L")
+        else:
+            pdf.set_text_color(0, 100, 0)
+            pdf.cell(0, 7, f"Ganho Líquido (com ganho da aplicação) Anual: {format_percent(abs(cet_anual_liquido) * 100)} a.a.", ln=True, align="L")
+            pdf.cell(0, 7, f"Ganho Líquido (com ganho da aplicação) Mensal: {format_percent(abs(cet_mensal_liquido) * 100)} a.m.", ln=True, align="L")
+
         pdf.set_text_color(0, 0, 0)
         pdf.set_font("helvetica", "", 12)
     else:
@@ -455,6 +452,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         teto_tac = 10000.00
         tac_valor = min(tac_valor_calculado, teto_tac)
         custos_operacionais_totais = iof_total + tac_valor + valor_prestamista
+        # CORREÇÃO AQUI
         valor_liquido_recebido = valor_credito - custos_operacionais_totais
         # 2. CÁLCULO DA EVOLUÇÃO DO CRÉDITO E DA APLICAÇÃO
         df_evolucao = pd.DataFrame(
@@ -529,16 +527,16 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         ) - (total_juros_pagos_credito + custos_operacionais_totais - (valor_aplicacao * iof_percentual_adicional))
 
         # CÁLCULO DO CET BRUTO
-        cet_mensal_bruto = -npf.rate(
+        cet_mensal_bruto = npf.rate(
             nper=prazo_credito_meses,
-            pmt=-df_evolucao['Parcela Mensal Credito'].mean(),
+            pmt=-df_evolucao['Parcela Mensal Credito'].mean(), 
             pv=valor_liquido_recebido,
             fv=0
         )
         cet_anual_bruto = ((1 + cet_mensal_bruto) ** 12) - 1
         
         # CÁLCULO DO CET LÍQUIDO
-        cet_mensal_liquido = -npf.rate(
+        cet_mensal_liquido = npf.rate(
             nper=prazo_credito_meses,
             pmt=-(df_evolucao.loc[1:, 'Parcela Mensal Credito'].mean() - df_evolucao.loc[1:, 'Rendimento Liquido Mensal da Aplicacao'].mean()),
             pv=valor_liquido_recebido,
@@ -573,7 +571,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                 df_evolucao, custos_operacionais_totais, rendimento_liquido_total_aplicacao,
                 cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
                 total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao,
-                usar_carencia, meses_carencia
+                usar_carencia, meses_carencia, valor_liquido_recebido
             )
         
         st.download_button(
@@ -606,4 +604,3 @@ st.write("""
 # O bloco de código para geração de PDF foi mantido comentado como no seu original.
 # Se for ativar, a biblioteca fpdf2 precisa ser instalada e o arquivo da fonte 'NotoSans-Regular.ttf'
 # precisa estar no mesmo diretório do app.py no GitHub.
-            
