@@ -467,14 +467,16 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                 "Rendimento Liquido Mensal da Aplicacao": 0.0,
             }
         )
-        df_evolucao.loc[0, "Saldo Devedor Credito"] = valor_credito + custos_operacionais_totais
+        # O saldo devedor inicial inclui os custos financiados
+        saldo_devedor_inicial = valor_credito + custos_operacionais_totais
+        df_evolucao.loc[0, "Saldo Devedor Credito"] = saldo_devedor_inicial
         df_evolucao.loc[0, "Saldo Aplicacao Garantia"] = valor_aplicacao
         
         # Recalculo da parcela com os custos financiados
         parcela_mensal_credito_real = npf.pmt(
             taxa_juros_pactuada_mensal,
             prazo_credito_meses,
-            -df_evolucao.loc[0, "Saldo Devedor Credito"]
+            -saldo_devedor_inicial
         )
 
         for mes in range(1, prazo_credito_meses + 1):
@@ -531,7 +533,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         ganho_liquido_total_operacao = (capital_total_acumulado_aplicacao - valor_aplicacao) - (total_juros_pagos_credito + custos_operacionais_totais)
 
         # CÁLCULO DO CET BRUTO
-        # CORREÇÃO: O PV agora é o valor_credito total, já que os custos são financiados.
+        # O PV agora é o valor_credito total, já que os custos são financiados.
         # Os pagamentos do PMT são as parcelas do crédito.
         cet_mensal_bruto = npf.rate(
             nper=prazo_credito_meses,
@@ -541,17 +543,28 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         )
         cet_anual_bruto = ((1 + cet_mensal_bruto) ** 12) - 1
         
-        # CÁLCULO DO CET LÍQUIDO
-        # CORREÇÃO: O FV agora é positivo pois é um valor que o cliente irá receber no final.
-        # O PMT é o fluxo de caixa líquido mensal.
-        cet_mensal_liquido = npf.rate(
-            nper=prazo_credito_meses,
-            pmt=-(df_evolucao.loc[1:, 'Parcela Mensal Credito'].mean() - df_evolucao.loc[1:, 'Rendimento Liquido Mensal da Aplicacao'].mean()),
-            pv=valor_credito,
-            fv=capital_total_acumulado_aplicacao
-        )
-        cet_anual_liquido = ((1 + cet_mensal_liquido) ** 12) - 1
+        # CÁLCULO DO CET LÍQUIDO (AGORA COM A FUNÇÃO IRR PARA MAIOR PRECISÃO)
+        cash_flows_liquido = [0.0] * (prazo_credito_meses + 1)
+        # Fluxo de caixa inicial (entrada de dinheiro do crédito e saída para a aplicação)
+        cash_flows_liquido[0] = valor_credito - valor_aplicacao - custos_operacionais_totais
         
+        for mes in range(1, prazo_credito_meses + 1):
+            # Fluxo de caixa mensal (rendimento da aplicação - parcela do crédito)
+            cash_flows_liquido[mes] = df_evolucao.loc[mes, 'Rendimento Liquido Mensal da Aplicacao'] - df_evolucao.loc[mes, 'Parcela Mensal Credito']
+
+        # O saldo final da aplicação é um fluxo de caixa de entrada no final
+        cash_flows_liquido[prazo_credito_meses] += capital_total_acumulado_aplicacao
+        
+        # Calcula a IRR do fluxo de caixa
+        cet_mensal_liquido = npf.irr(cash_flows_liquido)
+        
+        # Trata o caso de o IRR não ser um número válido (ex: cash flows apenas positivos)
+        if isinstance(cet_mensal_liquido, (float, int)):
+            cet_anual_liquido = ((1 + cet_mensal_liquido) ** 12) - 1
+        else:
+            cet_mensal_liquido = 0.0
+            cet_anual_liquido = 0.0
+
         # --- FIM DOS CÁLCULOS ---
         st.success("Simulação realizada com sucesso!")
 
