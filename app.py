@@ -3,7 +3,7 @@ import pandas as pd
 import numpy_financial as npf
 import plotly.express as px
 import base64
-from fpdf import FPDF 
+from fpdf import FPDF
 # Defina uma subclasse para personalizar o rodapé
 class PDF(FPDF):
     def footer(self):
@@ -56,7 +56,7 @@ def create_simulation_pdf(
     df_evolucao, custos_operacionais_totais, rendimento_liquido_total_aplicacao,
     cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
     total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao,
-    usar_carencia, meses_carencia, valor_liquido_recebido
+    usar_carencia, meses_carencia
 ):
     pdf = PDF(unit="mm", format="A4")
     pdf.add_page()
@@ -92,8 +92,9 @@ def create_simulation_pdf(
     pdf.cell(0, 7, f"Tipo de Taxa: {tipo_taxa_credito}", ln=True)
     if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
         pdf.cell(0, 7, f"Taxa do Indexador Mensal: {format_percent(taxa_indexador_mensal * 100)} a.m.", ln=True)
+    # CORREÇÃO: Valor líquido recebido é o valor total do crédito, pois os custos são financiados.
     pdf.set_font("helvetica", "B", 12)
-    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido)}", ln=True, align="L")
+    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_credito)}", ln=True, align="L")
     pdf.set_font("helvetica", "", 12)
     y_end_credito = pdf.get_y()
     pdf.set_draw_color(200, 200, 200)
@@ -271,7 +272,7 @@ with st.container(border=True): # Adiciona uma borda visual para agrupar
         valor_credito = st.number_input(
             "**Valor do Crédito (R$):**",
             min_value=1000.0,
-            value=100000.0,
+            value=200000.0,
             step=1000.0,
             format="%.2f"
         )
@@ -289,7 +290,7 @@ with st.container(border=True): # Adiciona uma borda visual para agrupar
         taxa_juros_pactuada_input = st.number_input(
             "**Taxa de Juros Pactuada do Crédito (% ao mês):**",
             min_value=0.01,
-            value=0.8,
+            value=1.65,
             step=0.01,
             format="%.2f"
         )
@@ -337,17 +338,13 @@ if usar_carencia:
 # --- FIM DO NOVO BLOCO ---
 
 # --- Expander para Custos Operacionais ---
-
-# ... o restante do seu código para IOF e TAC segue aqui ...
-
-# --- Expander para Custos Operacionais ---
 with st.expander("**Custos Operacionais do Crédito (IOF e TAC)**"):
     col_iof, col_tac = st.columns(2)
     with col_iof:
         iof_percentual = st.number_input(
             "**IOF Total (% do valor do crédito):**",
             min_value=0.0,
-            value=0.38,
+            value=3.20,
             step=0.01,
             format="%.2f"
         )
@@ -355,7 +352,7 @@ with st.expander("**Custos Operacionais do Crédito (IOF e TAC)**"):
         tac_percentual = st.number_input(
             "**TAC (% do valor do crédito):**",
             min_value=0.0,
-            value=0.0,
+            value=3.0,
             step=0.01,
             format="%.2f"
         )
@@ -379,7 +376,7 @@ with st.container(border=True):
             "Percentual do Seguro Prestamista (% do valor do crédito):",
             min_value=5.0,
             max_value=10.0,
-            value=7.5,
+            value=10.0,
             step=0.1,
             format="%.1f",
             help="Percentual do seguro prestamista sobre o valor do crédito, ajustado pela idade dos sócios."
@@ -405,13 +402,13 @@ simular_sem_aplicacao_financeira = st.checkbox("Simular sem aplicação financei
 if not simular_sem_aplicacao_financeira:
     st.subheader("Entradas da Aplicação")
     valor_aplicacao = st.number_input(
-        "Valor da Aplicação (R$)", min_value=0.0, value=100000.0, step=1000.0
+        "Valor da Aplicação (R$)", min_value=0.0, value=200000.0, step=1000.0
     )
     taxa_rendimento_aplicacao_mensal = (
         st.number_input(
             "Taxa de Rendimento da Aplicação (% a.m.)",
             min_value=0.0,
-            value=0.92,
+            value=1.00,
             step=0.01,
             format="%.2f",
         )
@@ -446,14 +443,16 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         # --- INÍCIO: SEÇÃO DE CÁLCULOS DA OPERAÇÃO DE CRÉDITO E APLICAÇÃO ---
 
         # 1. CÁLCULOS INICIAIS
-        iof_percentual_adicional = 0.0038
+        # Ajuste: Custo inicial é calculado, mas não subtraído do valor do crédito, pois é financiado.
         iof_total = valor_credito * (iof_percentual / 100)
         tac_valor_calculado = valor_credito * (tac_percentual / 100)
         teto_tac = 10000.00
         tac_valor = min(tac_valor_calculado, teto_tac)
         custos_operacionais_totais = iof_total + tac_valor + valor_prestamista
-        # CORREÇÃO AQUI
-        valor_liquido_recebido = valor_credito - custos_operacionais_totais
+        
+        # O valor líquido recebido é o valor do crédito, conforme a regra de financiamento de custos.
+        valor_liquido_recebido = valor_credito
+        
         # 2. CÁLCULO DA EVOLUÇÃO DO CRÉDITO E DA APLICAÇÃO
         df_evolucao = pd.DataFrame(
             {
@@ -468,17 +467,23 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                 "Rendimento Liquido Mensal da Aplicacao": 0.0,
             }
         )
-        df_evolucao.loc[0, "Saldo Devedor Credito"] = valor_credito
+        df_evolucao.loc[0, "Saldo Devedor Credito"] = valor_credito + custos_operacionais_totais
         df_evolucao.loc[0, "Saldo Aplicacao Garantia"] = valor_aplicacao
         
-        parcela_mensal_credito_real = 0.0
+        # Recalculo da parcela com os custos financiados
+        parcela_mensal_credito_real = npf.pmt(
+            taxa_juros_pactuada_mensal,
+            prazo_credito_meses,
+            -df_evolucao.loc[0, "Saldo Devedor Credito"]
+        )
 
         for mes in range(1, prazo_credito_meses + 1):
             # Cálculo do Crédito (Tabela Price)
             juros_mensal_credito = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"] * taxa_juros_pactuada_mensal
             
             if usar_carencia and mes <= meses_carencia:
-                parcela_mensal_credito_real = juros_mensal_credito
+                # Na carência, a parcela é apenas os juros do saldo devedor
+                parcela_mensal_credito_real_carencia = juros_mensal_credito
                 amortizacao_mensal = 0.0
             else:
                 if mes == meses_carencia + 1:
@@ -490,13 +495,13 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                             prazo_credito_meses - meses_carencia,
                             -saldo_devedor_pos_carencia,
                         )
-                        parcela_mensal_credito_real = parcela_apos_carencia
+                        parcela_mensal_credito_real_carencia = parcela_apos_carencia
                     else:
-                        parcela_mensal_credito_real = 0.0
+                        parcela_mensal_credito_real_carencia = 0.0
                 else:
-                    parcela_mensal_credito_real = df_evolucao.loc[mes - 1, "Parcela Mensal Credito"]
+                    parcela_mensal_credito_real_carencia = df_evolucao.loc[mes - 1, "Parcela Mensal Credito"]
                 
-                amortizacao_mensal = parcela_mensal_credito_real - juros_mensal_credito
+                amortizacao_mensal = parcela_mensal_credito_real_carencia - juros_mensal_credito
 
             saldo_devedor_credito = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"] - amortizacao_mensal
 
@@ -522,25 +527,28 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         capital_total_acumulado_aplicacao = df_evolucao.loc[prazo_credito_meses, "Saldo Aplicacao Garantia"]
 
         # 3. CÁLCULO DO GANHO LÍQUIDO E CET
-        ganho_liquido_total_operacao = (
-            capital_total_acumulado_aplicacao - valor_aplicacao
-        ) - (total_juros_pagos_credito + custos_operacionais_totais - (valor_aplicacao * iof_percentual_adicional))
+        # CORREÇÃO: Nova fórmula para o ganho líquido
+        ganho_liquido_total_operacao = (capital_total_acumulado_aplicacao - valor_aplicacao) - (total_juros_pagos_credito + custos_operacionais_totais)
 
         # CÁLCULO DO CET BRUTO
+        # CORREÇÃO: O PV agora é o valor_credito total, já que os custos são financiados.
+        # Os pagamentos do PMT são as parcelas do crédito.
         cet_mensal_bruto = npf.rate(
             nper=prazo_credito_meses,
             pmt=-df_evolucao['Parcela Mensal Credito'].mean(), 
-            pv=valor_liquido_recebido,
+            pv=valor_credito,
             fv=0
         )
         cet_anual_bruto = ((1 + cet_mensal_bruto) ** 12) - 1
         
         # CÁLCULO DO CET LÍQUIDO
+        # CORREÇÃO: O FV agora é positivo pois é um valor que o cliente irá receber no final.
+        # O PMT é o fluxo de caixa líquido mensal.
         cet_mensal_liquido = npf.rate(
             nper=prazo_credito_meses,
             pmt=-(df_evolucao.loc[1:, 'Parcela Mensal Credito'].mean() - df_evolucao.loc[1:, 'Rendimento Liquido Mensal da Aplicacao'].mean()),
-            pv=valor_liquido_recebido,
-            fv=-capital_total_acumulado_aplicacao
+            pv=valor_credito,
+            fv=capital_total_acumulado_aplicacao
         )
         cet_anual_liquido = ((1 + cet_mensal_liquido) ** 12) - 1
         
@@ -571,7 +579,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                 df_evolucao, custos_operacionais_totais, rendimento_liquido_total_aplicacao,
                 cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
                 total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao,
-                usar_carencia, meses_carencia, valor_liquido_recebido
+                usar_carencia, meses_carencia
             )
         
         st.download_button(
