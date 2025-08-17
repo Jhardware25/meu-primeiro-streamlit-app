@@ -544,10 +544,16 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         ganho_liquido_total_operacao = (capital_total_acumulado_aplicacao - valor_aplicacao) - (total_juros_pagos_credito + custos_operacionais_totais)
 
         # CÁLCULO DO CET BRUTO
+        # CORREÇÃO: Usar o valor líquido recebido como PV para o cálculo do CET Bruto
+        if tipo_taxa_credito == "Prefixada":
+            pv_cet_bruto = valor_credito
+        else:
+            pv_cet_bruto = valor_liquido_recebido
+
         cet_mensal_bruto = npf.rate(
             nper=prazo_credito_meses,
             pmt=-df_evolucao['Parcela Mensal Credito'].mean(), 
-            pv=valor_credito,
+            pv=pv_cet_bruto,
             fv=0
         )
         cet_anual_bruto = ((1 + cet_mensal_bruto) ** 12) - 1
