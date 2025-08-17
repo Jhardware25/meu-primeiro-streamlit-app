@@ -93,8 +93,15 @@ def create_simulation_pdf(
     if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
         pdf.cell(0, 7, f"Taxa do Indexador Mensal: {format_percent(taxa_indexador_mensal * 100)} a.m.", ln=True)
     # CORREÇÃO: Valor líquido recebido é o valor total do crédito, pois os custos são financiados.
+    
+    # Lógica condicional para o valor líquido recebido
+    if tipo_taxa_credito == "Prefixada":
+        valor_liquido_recebido_pdf = valor_credito
+    else: # Pós-fixada
+        valor_liquido_recebido_pdf = valor_credito - custos_operacionais_totais
+    
     pdf.set_font("helvetica", "B", 12)
-    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_credito)}", ln=True, align="L")
+    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido_pdf)}", ln=True, align="L")
     pdf.set_font("helvetica", "", 12)
     y_end_credito = pdf.get_y()
     pdf.set_draw_color(200, 200, 200)
@@ -443,15 +450,21 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         # --- INÍCIO: SEÇÃO DE CÁLCULOS DA OPERAÇÃO DE CRÉDITO E APLICAÇÃO ---
 
         # 1. CÁLCULOS INICIAIS
-        # Ajuste: Custo inicial é calculado, mas não subtraído do valor do crédito, pois é financiado.
         iof_total = valor_credito * (iof_percentual / 100)
         tac_valor_calculado = valor_credito * (tac_percentual / 100)
         teto_tac = 10000.00
         tac_valor = min(tac_valor_calculado, teto_tac)
         custos_operacionais_totais = iof_total + tac_valor + valor_prestamista
         
-        # O valor líquido recebido é o valor do crédito, conforme a regra de financiamento de custos.
-        valor_liquido_recebido = valor_credito
+        # Lógica condicional para definir o fluxo de caixa e saldos iniciais
+        if tipo_taxa_credito == "Prefixada":
+            # Caso Prefixada: Custos são financiados
+            valor_liquido_recebido = valor_credito
+            saldo_devedor_inicial = valor_credito + custos_operacionais_totais
+        else:
+            # Caso Pós-fixada (TR): Custos são descontados do valor do crédito
+            valor_liquido_recebido = valor_credito - custos_operacionais_totais
+            saldo_devedor_inicial = valor_credito
         
         # 2. CÁLCULO DA EVOLUÇÃO DO CRÉDITO E DA APLICAÇÃO
         df_evolucao = pd.DataFrame(
@@ -467,12 +480,11 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                 "Rendimento Liquido Mensal da Aplicacao": 0.0,
             }
         )
-        # O saldo devedor inicial inclui os custos financiados
-        saldo_devedor_inicial = valor_credito + custos_operacionais_totais
+        
         df_evolucao.loc[0, "Saldo Devedor Credito"] = saldo_devedor_inicial
         df_evolucao.loc[0, "Saldo Aplicacao Garantia"] = valor_aplicacao
         
-        # Recalculo da parcela com os custos financiados
+        # Recalculo da parcela com o saldo devedor inicial corrigido
         parcela_mensal_credito_real = npf.pmt(
             taxa_juros_pactuada_mensal,
             prazo_credito_meses,
@@ -529,12 +541,9 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         capital_total_acumulado_aplicacao = df_evolucao.loc[prazo_credito_meses, "Saldo Aplicacao Garantia"]
 
         # 3. CÁLCULO DO GANHO LÍQUIDO E CET
-        # CORREÇÃO: Nova fórmula para o ganho líquido
         ganho_liquido_total_operacao = (capital_total_acumulado_aplicacao - valor_aplicacao) - (total_juros_pagos_credito + custos_operacionais_totais)
 
         # CÁLCULO DO CET BRUTO
-        # O PV agora é o valor_credito total, já que os custos são financiados.
-        # Os pagamentos do PMT são as parcelas do crédito.
         cet_mensal_bruto = npf.rate(
             nper=prazo_credito_meses,
             pmt=-df_evolucao['Parcela Mensal Credito'].mean(), 
@@ -543,11 +552,14 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         )
         cet_anual_bruto = ((1 + cet_mensal_bruto) ** 12) - 1
         
-        # CÁLCULO DO CET LÍQUIDO (AGORA COM A FUNÇÃO IRR PARA MAIOR PRECISÃO)
+        # CÁLCULO DO CET LÍQUIDO (AGORA COM A FUNÇÃO IRR PARA MAIOR PRECISÃO E LÓGICA CORRIGIDA)
         cash_flows_liquido = [0.0] * (prazo_credito_meses + 1)
-        # Fluxo de caixa inicial (entrada de dinheiro do crédito e saída para a aplicação)
-        # AQUI FOI A CORREÇÃO: custos_operacionais_totais não devem ser subtraídos aqui.
-        cash_flows_liquido[0] = valor_credito - valor_aplicacao
+        
+        # Lógica para o fluxo de caixa inicial, dependendo do tipo de taxa
+        if tipo_taxa_credito == "Prefixada":
+            cash_flows_liquido[0] = valor_credito - valor_aplicacao
+        else: # Pós-fixada
+            cash_flows_liquido[0] = valor_liquido_recebido - valor_aplicacao
         
         for mes in range(1, prazo_credito_meses + 1):
             # Fluxo de caixa mensal (rendimento da aplicação - parcela do crédito)
@@ -559,7 +571,6 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         # Calcula a IRR do fluxo de caixa
         cet_mensal_liquido = npf.irr(cash_flows_liquido)
         
-        # Trata o caso de o IRR não ser um número válido (ex: cash flows apenas positivos)
         if isinstance(cet_mensal_liquido, (float, int)):
             cet_anual_liquido = ((1 + cet_mensal_liquido) ** 12) - 1
         else:
