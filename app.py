@@ -92,8 +92,6 @@ def create_simulation_pdf(
     pdf.cell(0, 7, f"Tipo de Taxa: {tipo_taxa_credito}", ln=True)
     if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
         pdf.cell(0, 7, f"Taxa do Indexador Mensal: {format_percent(taxa_indexador_mensal * 100)} a.m.", ln=True)
-    # CORREÇÃO: Valor líquido recebido é o valor total do crédito, pois os custos são financiados.
-    
     # Lógica condicional para o valor líquido recebido
     if tipo_taxa_credito == "Prefixada":
         valor_liquido_recebido_pdf = valor_credito
@@ -542,39 +540,36 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
 
         # 3. CÁLCULO DO GANHO LÍQUIDO E CET
         ganho_liquido_total_operacao = (capital_total_acumulado_aplicacao - valor_aplicacao) - (total_juros_pagos_credito + custos_operacionais_totais)
-
-        # CÁLCULO DO CET BRUTO
-        # CORREÇÃO: Usar o valor líquido recebido como PV para o cálculo do CET Bruto
-        if tipo_taxa_credito == "Prefixada":
-            pv_cet_bruto = valor_credito
-        else:
-            pv_cet_bruto = valor_liquido_recebido
+        
+        # --- CORREÇÃO DO CÁLCULO DO CET BRUTO ---
+        # A PV (Present Value) para o cálculo do CET deve ser o valor que o cliente realmente recebe.
+        # No caso de custos descontados, a PV é o valor nominal do crédito menos os custos.
+        
+        pv_cet_bruto = valor_credito
+        if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
+            pv_cet_bruto = valor_credito - custos_operacionais_totais
 
         cet_mensal_bruto = npf.rate(
             nper=prazo_credito_meses,
-            pmt=-df_evolucao['Parcela Mensal Credito'].mean(), 
+            pmt=-df_evolucao['Parcela Mensal Credito'].mean(),
             pv=pv_cet_bruto,
             fv=0
         )
         cet_anual_bruto = ((1 + cet_mensal_bruto) ** 12) - 1
         
-        # CÁLCULO DO CET LÍQUIDO (AGORA COM A FUNÇÃO IRR PARA MAIOR PRECISÃO E LÓGICA CORRIGIDA)
+        # CÁLCULO DO CET LÍQUIDO
         cash_flows_liquido = [0.0] * (prazo_credito_meses + 1)
         
-        # Lógica para o fluxo de caixa inicial, dependendo do tipo de taxa
         if tipo_taxa_credito == "Prefixada":
             cash_flows_liquido[0] = valor_credito - valor_aplicacao
-        else: # Pós-fixada
+        else:
             cash_flows_liquido[0] = valor_liquido_recebido - valor_aplicacao
         
         for mes in range(1, prazo_credito_meses + 1):
-            # Fluxo de caixa mensal (rendimento da aplicação - parcela do crédito)
             cash_flows_liquido[mes] = df_evolucao.loc[mes, 'Rendimento Liquido Mensal da Aplicacao'] - df_evolucao.loc[mes, 'Parcela Mensal Credito']
 
-        # O saldo final da aplicação é um fluxo de caixa de entrada no final
         cash_flows_liquido[prazo_credito_meses] += capital_total_acumulado_aplicacao
         
-        # Calcula a IRR do fluxo de caixa
         cet_mensal_liquido = npf.irr(cash_flows_liquido)
         
         if isinstance(cet_mensal_liquido, (float, int)):
