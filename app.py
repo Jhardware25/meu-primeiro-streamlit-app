@@ -546,7 +546,8 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         # CÁLCULO DO CET LÍQUIDO (AGORA COM A FUNÇÃO IRR PARA MAIOR PRECISÃO)
         cash_flows_liquido = [0.0] * (prazo_credito_meses + 1)
         # Fluxo de caixa inicial (entrada de dinheiro do crédito e saída para a aplicação)
-        cash_flows_liquido[0] = valor_credito - valor_aplicacao - custos_operacionais_totais
+        # AQUI FOI A CORREÇÃO: custos_operacionais_totais não devem ser subtraídos aqui.
+        cash_flows_liquido[0] = valor_credito - valor_aplicacao
         
         for mes in range(1, prazo_credito_meses + 1):
             # Fluxo de caixa mensal (rendimento da aplicação - parcela do crédito)
