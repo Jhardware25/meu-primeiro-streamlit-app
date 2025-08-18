@@ -557,7 +557,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         # 3. CÁLCULO DO GANHO LÍQUIDO E CET
         ganho_liquido_total_operacao = (capital_total_acumulado_aplicacao - valor_aplicacao) - (total_juros_pagos_credito + custos_operacionais_totais)
         
-        # CÁLCULO DO CET BRUTO (NOVA LÓGICA COM IRR)
+        # CÁLCULO DO CET BRUTO
         # O fluxo de caixa para o CET Bruto é o valor líquido recebido e as parcelas do crédito.
         cash_flows_bruto = [valor_liquido_recebido] + list(-df_evolucao['Parcela Mensal Credito'][1:])
 
@@ -568,25 +568,16 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         except:
           cet_mensal_bruto = 0.0
           cet_anual_bruto = 0.0
+        
+        # CÁLCULO DO CET LÍQUIDO (NOVA LÓGICA CORRIGIDA)
+        # O fluxo de caixa para o CET Líquido é o valor do crédito (inflow)
+        # e o fluxo líquido mensal (Parcela - Rendimento) (outflow).
+        # A lógica é encontrar a taxa que iguala o valor recebido à soma dos
+        # pagamentos líquidos futuros.
+        cash_flows_liquido = [-valor_liquido_recebido]
+        net_payments = df_evolucao['Parcela Mensal Credito'][1:] - df_evolucao['Rendimento Liquido Mensal da Aplicacao'][1:]
+        cash_flows_liquido.extend(list(net_payments))
 
-        # CÁLCULO DO CET LÍQUIDO (NOVA LÓGICA COM IRR)
-        # O fluxo de caixa para o CET Líquido considera a operação completa:
-        # 1. Valor inicial: Valor líquido recebido do crédito menos o valor da aplicação.
-        # 2. Fluxos mensais: Rendimento líquido da aplicação menos a parcela do crédito.
-        # 3. Fluxo final: O saldo final da aplicação.
-        
-        # O cash flow inicial é o valor líquido recebido (pelo cliente) menos o valor da aplicação
-        cash_flows_liquido = [valor_liquido_recebido - valor_aplicacao]
-        
-        # Os fluxos mensais são a diferença entre o rendimento da aplicação e a parcela do crédito
-        for mes in range(1, prazo_credito_meses + 1):
-            net_cash_flow = df_evolucao.loc[mes, 'Rendimento Liquido Mensal da Aplicacao'] - df_evolucao.loc[mes, 'Parcela Mensal Credito']
-            cash_flows_liquido.append(net_cash_flow)
-            
-        # Adicionar o valor de resgate final da aplicação ao último fluxo de caixa
-        cash_flows_liquido[prazo_credito_meses] += capital_total_acumulado_aplicacao
-        
-        # Calcular o CET Líquido usando a função irr
         try:
             cet_mensal_liquido = npf.irr(cash_flows_liquido)
             if isinstance(cet_mensal_liquido, (float, int)):
@@ -594,7 +585,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
             else:
                 cet_mensal_liquido = 0.0
                 cet_anual_liquido = 0.0
-        except:
+        except Exception:
             cet_mensal_liquido = 0.0
             cet_anual_liquido = 0.0
 
@@ -655,7 +646,3 @@ st.write("""
 - A **TR (Taxa Referencial)** é uma taxa de juros que pode variar. Para simulações futuras, considere que seu valor pode mudar.
 - Esta é apenas uma simulação e os valores reais podem variar. Consulte sempre um profissional financeiro.
 """)
-
-# O bloco de código para geração de PDF foi mantido comentado como no seu original.
-# Se for ativar, a biblioteca fpdf2 precisa ser instalada e o arquivo da fonte 'NotoSans-Regular.ttf'
-# precisa estar no mesmo diretório do app.py no GitHub.
