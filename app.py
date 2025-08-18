@@ -56,7 +56,7 @@ def create_simulation_pdf(
     df_evolucao, custos_operacionais_totais, rendimento_liquido_total_aplicacao,
     cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
     total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao,
-    usar_carencia, meses_carencia
+    usar_carencia, meses_carencia, valor_liquido_recebido
 ):
     pdf = PDF(unit="mm", format="A4")
     pdf.add_page()
@@ -92,14 +92,8 @@ def create_simulation_pdf(
     pdf.cell(0, 7, f"Tipo de Taxa: {tipo_taxa_credito}", ln=True)
     if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
         pdf.cell(0, 7, f"Taxa do Indexador Mensal: {format_percent(taxa_indexador_mensal * 100)} a.m.", ln=True)
-    # Lógica condicional para o valor líquido recebido
-    if tipo_taxa_credito == "Prefixada":
-        valor_liquido_recebido_pdf = valor_credito
-    else: # Pós-fixada
-        valor_liquido_recebido_pdf = valor_credito - custos_operacionais_totais
-    
     pdf.set_font("helvetica", "B", 12)
-    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido_pdf)}", ln=True, align="L")
+    pdf.cell(0, 7, f"Valor Líquido Recebido pelo Cliente: {format_brl(valor_liquido_recebido)}", ln=True, align="L")
     pdf.set_font("helvetica", "", 12)
     y_end_credito = pdf.get_y()
     pdf.set_draw_color(200, 200, 200)
@@ -148,8 +142,8 @@ def create_simulation_pdf(
     parcela_mensal_credito_media = df_evolucao['Parcela Mensal Credito'].mean()
     parcela_mensal_liquida_media = (df_evolucao['Parcela Mensal Credito'] - df_evolucao['Rendimento Liquido Mensal da Aplicacao']).mean()
     if usar_carencia:
-        pdf.cell(0, 7, f"Parcela Mensal do Crédito (durante a carência): {format_brl(df_evolucao.loc[0, 'Parcela Mensal Credito'])}", ln=True)
-        pdf.cell(0, 7, f"Parcela Mensal do Crédito (após a carência): {format_brl(df_evolucao.loc[meses_carencia, 'Parcela Mensal Credito'])}", ln=True)
+        pdf.cell(0, 7, f"Parcela Mensal do Crédito (durante a carência): {format_brl(df_evolucao.loc[1, 'Juros Mensal Credito'])}", ln=True)
+        pdf.cell(0, 7, f"Parcela Mensal do Crédito (após a carência): {format_brl(df_evolucao.loc[meses_carencia + 1, 'Parcela Mensal Credito'])}", ln=True)
     else:
         pdf.cell(0, 7, f"Parcela Mensal do Crédito: {format_brl(parcela_mensal_credito_media)}", ln=True)
     pdf.cell(0, 7, f"Parcela Mensal do Crédito (com desconto da Aplicação): {format_brl(parcela_mensal_liquida_media)}", ln=True)
@@ -483,19 +477,22 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         df_evolucao.loc[0, "Saldo Aplicacao Garantia"] = valor_aplicacao
         
         # Recalculo da parcela com o saldo devedor inicial corrigido
-        parcela_mensal_credito_real = npf.pmt(
-            taxa_juros_pactuada_mensal,
-            prazo_credito_meses,
-            -saldo_devedor_inicial
-        )
-
+        if saldo_devedor_inicial > 0:
+            parcela_mensal_credito_base = npf.pmt(
+                taxa_juros_pactuada_mensal,
+                prazo_credito_meses,
+                -saldo_devedor_inicial
+            )
+        else:
+            parcela_mensal_credito_base = 0.0
+            
         for mes in range(1, prazo_credito_meses + 1):
             # Cálculo do Crédito (Tabela Price)
             juros_mensal_credito = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"] * taxa_juros_pactuada_mensal
             
             if usar_carencia and mes <= meses_carencia:
                 # Na carência, a parcela é apenas os juros do saldo devedor
-                parcela_mensal_credito_real_carencia = juros_mensal_credito
+                parcela_mensal_credito_real = juros_mensal_credito
                 amortizacao_mensal = 0.0
             else:
                 if mes == meses_carencia + 1:
@@ -507,13 +504,13 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                             prazo_credito_meses - meses_carencia,
                             -saldo_devedor_pos_carencia,
                         )
-                        parcela_mensal_credito_real_carencia = parcela_apos_carencia
+                        parcela_mensal_credito_real = parcela_apos_carencia
                     else:
-                        parcela_mensal_credito_real_carencia = 0.0
+                        parcela_mensal_credito_real = 0.0
                 else:
-                    parcela_mensal_credito_real_carencia = df_evolucao.loc[mes - 1, "Parcela Mensal Credito"]
+                    parcela_mensal_credito_real = df_evolucao.loc[mes-1, 'Parcela Mensal Credito']
                 
-                amortizacao_mensal = parcela_mensal_credito_real_carencia - juros_mensal_credito
+                amortizacao_mensal = parcela_mensal_credito_real - juros_mensal_credito
 
             saldo_devedor_credito = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"] - amortizacao_mensal
 
@@ -541,42 +538,62 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         # 3. CÁLCULO DO GANHO LÍQUIDO E CET
         ganho_liquido_total_operacao = (capital_total_acumulado_aplicacao - valor_aplicacao) - (total_juros_pagos_credito + custos_operacionais_totais)
         
-        # --- CORREÇÃO DO CÁLCULO DO CET BRUTO ---
-        # A PV (Present Value) para o cálculo do CET deve ser o valor que o cliente realmente recebe.
-        # No caso de custos descontados, a PV é o valor nominal do crédito menos os custos.
+        # CÁLCULO DO CET BRUTO (NOVA LÓGICA COM IRR)
+        # O fluxo de caixa para o CET Bruto é o valor líquido recebido menos o valor da aplicação,
+        # e as parcelas do crédito nos meses seguintes.
         
-        pv_cet_bruto = valor_credito
-        if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
-            pv_cet_bruto = valor_credito - custos_operacionais_totais
+        # Definir o valor líquido recebido pelo cliente para o cálculo do CET Bruto
+        if tipo_taxa_credito == "Prefixada":
+            # Na prefixada, os custos são financiados e o cliente recebe o valor integral do crédito.
+            valor_liquido_cet_bruto = valor_credito
+        else: # Pós-fixada
+            # Na pós-fixada, os custos são descontados e o cliente recebe o valor do crédito menos os custos.
+            valor_liquido_cet_bruto = valor_credito - custos_operacionais_totais
 
-        cet_mensal_bruto = npf.rate(
-            nper=prazo_credito_meses,
-            pmt=-df_evolucao['Parcela Mensal Credito'].mean(),
-            pv=pv_cet_bruto,
-            fv=0
-        )
+        # Criar o array de cash flows para o CET Bruto
+        # O primeiro elemento é o valor líquido recebido (fluxo de entrada, sinal positivo)
+        # Os elementos subsequentes são as parcelas do crédito (fluxo de saída, sinal negativo)
+        cash_flows_bruto = [valor_liquido_cet_bruto] + list(-df_evolucao['Parcela Mensal Credito'][1:])
+
+        # Usar a função irr para encontrar a taxa efetiva do empréstimo
+        cet_mensal_bruto = npf.irr(cash_flows_bruto)
         cet_anual_bruto = ((1 + cet_mensal_bruto) ** 12) - 1
         
-        # CÁLCULO DO CET LÍQUIDO
-        cash_flows_liquido = [0.0] * (prazo_credito_meses + 1)
+        # CÁLCULO DO CET LÍQUIDO (NOVA LÓGICA COM IRR)
+        # O fluxo de caixa para o CET Líquido considera a operação completa:
+        # 1. Valor inicial: Valor líquido recebido do crédito menos o valor da aplicação.
+        # 2. Fluxos mensais: Rendimento líquido da aplicação menos a parcela do crédito.
+        # 3. Fluxo final: O saldo final da aplicação.
         
+        # Definir o valor líquido recebido pelo cliente para o cálculo do CET Líquido
         if tipo_taxa_credito == "Prefixada":
-            cash_flows_liquido[0] = valor_credito - valor_aplicacao
+            valor_liquido_cet_liquido = valor_credito
         else:
-            cash_flows_liquido[0] = valor_liquido_recebido - valor_aplicacao
+            valor_liquido_cet_liquido = valor_credito - custos_operacionais_totais
         
+        # O cash flow inicial é o valor líquido recebido (pelo cliente) menos o valor da aplicação
+        cash_flows_liquido = [valor_liquido_cet_liquido - valor_aplicacao]
+        
+        # Os fluxos mensais são a diferença entre o rendimento da aplicação e a parcela do crédito
         for mes in range(1, prazo_credito_meses + 1):
-            cash_flows_liquido[mes] = df_evolucao.loc[mes, 'Rendimento Liquido Mensal da Aplicacao'] - df_evolucao.loc[mes, 'Parcela Mensal Credito']
-
+            net_cash_flow = df_evolucao.loc[mes, 'Rendimento Liquido Mensal da Aplicacao'] - df_evolucao.loc[mes, 'Parcela Mensal Credito']
+            cash_flows_liquido.append(net_cash_flow)
+            
+        # Adicionar o valor de resgate final da aplicação ao último fluxo de caixa
         cash_flows_liquido[prazo_credito_meses] += capital_total_acumulado_aplicacao
         
-        cet_mensal_liquido = npf.irr(cash_flows_liquido)
-        
-        if isinstance(cet_mensal_liquido, (float, int)):
-            cet_anual_liquido = ((1 + cet_mensal_liquido) ** 12) - 1
-        else:
+        # Calcular o CET Líquido usando a função irr
+        try:
+            cet_mensal_liquido = npf.irr(cash_flows_liquido)
+            if isinstance(cet_mensal_liquido, (float, int)):
+                cet_anual_liquido = ((1 + cet_mensal_liquido) ** 12) - 1
+            else:
+                cet_mensal_liquido = 0.0
+                cet_anual_liquido = 0.0
+        except:
             cet_mensal_liquido = 0.0
             cet_anual_liquido = 0.0
+
 
         # --- FIM DOS CÁLCULOS ---
         st.success("Simulação realizada com sucesso!")
@@ -605,7 +622,7 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
                 df_evolucao, custos_operacionais_totais, rendimento_liquido_total_aplicacao,
                 cet_anual_bruto, cet_mensal_bruto, cet_anual_liquido, cet_mensal_liquido,
                 total_juros_pagos_credito, ir_total_aplicacao, capital_total_acumulado_aplicacao, ganho_liquido_total_operacao,
-                usar_carencia, meses_carencia
+                usar_carencia, meses_carencia, valor_liquido_recebido
             )
         
         st.download_button(
