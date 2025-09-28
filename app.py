@@ -497,41 +497,48 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         
         saldo_devedor_atual = saldo_devedor_inicial
 
+        # Se for taxa prefixada, a parcela é calculada uma única vez
+        if tipo_taxa_credito == "Prefixada":
+            parcela_fixa = npf.pmt(taxa_juros_pactuada_mensal, prazo_credito_meses, -saldo_devedor_inicial)
+        else:
+            parcela_fixa = 0.0
+
         for mes in range(1, prazo_credito_meses + 1):
             
             # ATUALIZAÇÃO DA TAXA DE JUROS SE FOR PÓS-FIXADA
-            taxa_juros_mensal_efetiva = taxa_juros_pactuada_mensal
             if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
-                taxa_juros_mensal_efetiva += taxa_indexador_mensal
+                taxa_juros_mensal_efetiva = taxa_juros_pactuada_mensal + taxa_indexador_mensal
+                juros_mensal_credito = saldo_devedor_atual * taxa_juros_mensal_efetiva
+                saldo_devedor_corrigido = saldo_devedor_atual + juros_mensal_credito
+                
+                # Recalcula a parcela a cada mês com base no saldo devedor corrigido
+                parcela_mensal_credito_real = npf.pmt(
+                    taxa_juros_mensal_efetiva,
+                    prazo_credito_meses - mes + 1,
+                    -saldo_devedor_atual,
+                )
+                
+                amortizacao_mensal = parcela_mensal_credito_real - juros_mensal_credito
+                saldo_devedor_atual -= amortizacao_mensal
+
+            else: # Prefixada
+                juros_mensal_credito = saldo_devedor_atual * taxa_juros_pactuada_mensal
+                parcela_mensal_credito_real = parcela_fixa
+                amortizacao_mensal = parcela_mensal_credito_real - juros_mensal_credito
+                saldo_devedor_atual -= amortizacao_mensal
             
             # Na carência, a parcela é apenas os juros do saldo devedor
             if usar_carencia and mes <= meses_carencia:
-                juros_mensal_credito = saldo_devedor_atual * taxa_juros_mensal_efetiva
-                parcela_mensal_credito_real = juros_mensal_credito
+                juros_mensal_credito_carencia = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"] * taxa_juros_pactuada_mensal
+                parcela_mensal_credito_real = juros_mensal_credito_carencia
                 amortizacao_mensal = 0.0
-            else:
-                # Recalculate PMT each month based on the remaining term and current balance
-                if saldo_devedor_atual > 0:
-                    parcela_mensal_credito_real = npf.pmt(
-                        taxa_juros_mensal_efetiva,
-                        prazo_credito_meses - mes + 1,
-                        -saldo_devedor_atual,
-                    )
-                else:
-                    parcela_mensal_credito_real = 0.0
                 
-                juros_mensal_credito = saldo_devedor_atual * taxa_juros_mensal_efetiva
-                amortizacao_mensal = parcela_mensal_credito_real - juros_mensal_credito
-            
-            # Update the balance for the next month
-            saldo_devedor_atual -= amortizacao_mensal
-
             # Now update the DataFrame with the calculated values
             df_evolucao.loc[mes, "Juros Mensal Credito"] = juros_mensal_credito
             df_evolucao.loc[mes, "Amortizacao Mensal"] = amortizacao_mensal
             df_evolucao.loc[mes, "Parcela Mensal Credito"] = parcela_mensal_credito_real
             df_evolucao.loc[mes, "Saldo Devedor Credito"] = saldo_devedor_atual
-
+            
             # Calculation of the application remains the same
             saldo_aplicacao_garantia = df_evolucao.loc[mes - 1, "Saldo Aplicacao Garantia"]
             rendimento_bruto_mensal_aplicacao = saldo_aplicacao_garantia * taxa_rendimento_aplicacao_mensal
