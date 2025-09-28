@@ -495,49 +495,43 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         df_evolucao.loc[0, "Saldo Devedor Credito"] = saldo_devedor_inicial
         df_evolucao.loc[0, "Saldo Aplicacao Garantia"] = valor_aplicacao
         
+        # Recalculo da parcela com o saldo devedor inicial corrigido
+        if saldo_devedor_inicial > 0:
+            parcela_mensal_credito_base = npf.pmt(
+                taxa_juros_pactuada_mensal,
+                prazo_credito_meses,
+                -saldo_devedor_inicial
+            )
+        else:
+            parcela_mensal_credito_base = 0.0
+            
         for mes in range(1, prazo_credito_meses + 1):
-            
-            # ATUALIZAÇÃO DA TAXA DE JUROS SE FOR PÓS-FIXADA
-            taxa_juros_mensal_efetiva = taxa_juros_pactuada_mensal
-            if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
-                taxa_juros_mensal_efetiva += taxa_indexador_mensal
-            
-            saldo_devedor_anterior = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"]
-            
-            # Correção do Saldo Devedor para o cálculo da parcela (no caso de taxa pós)
-            saldo_devedor_atualizado = saldo_devedor_anterior * (1 + taxa_indexador_mensal)
-            
             # Cálculo do Crédito (Tabela Price)
-            juros_mensal_credito = saldo_devedor_anterior * taxa_juros_mensal_efetiva
+            juros_mensal_credito = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"] * taxa_juros_pactuada_mensal
             
             if usar_carencia and mes <= meses_carencia:
                 # Na carência, a parcela é apenas os juros do saldo devedor
                 parcela_mensal_credito_real = juros_mensal_credito
                 amortizacao_mensal = 0.0
             else:
-                if mes == meses_carencia + 1 or tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
+                if mes == meses_carencia + 1:
                     # Recalcular a parcela após a carência, usando o saldo devedor atual
-                    saldo_devedor_para_pmt = saldo_devedor_atualizado if tipo_taxa_credito == "Pós-fixada (TR + Taxa)" else df_evolucao.loc[mes-1, 'Saldo Devedor Credito']
-                    
-                    if saldo_devedor_para_pmt > 0:
-                        parcela_apos_ajuste = npf.pmt(
-                            taxa_juros_mensal_efetiva,
-                            prazo_credito_meses - mes + 1,
-                            -saldo_devedor_para_pmt,
+                    saldo_devedor_pos_carencia = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"]
+                    if saldo_devedor_pos_carencia > 0:
+                        parcela_apos_carencia = npf.pmt(
+                            taxa_juros_pactuada_mensal,
+                            prazo_credito_meses - meses_carencia,
+                            -saldo_devedor_pos_carencia,
                         )
-                        parcela_mensal_credito_real = parcela_apos_ajuste
+                        parcela_mensal_credito_real = parcela_apos_carencia
                     else:
                         parcela_mensal_credito_real = 0.0
                 else:
-                    parcela_mensal_credito_real = npf.pmt(
-                        taxa_juros_pactuada_mensal,
-                        prazo_credito_meses,
-                        -saldo_devedor_inicial,
-                    )
+                    parcela_mensal_credito_real = df_evolucao.loc[mes-1, 'Parcela Mensal Credito']
                 
                 amortizacao_mensal = parcela_mensal_credito_real - juros_mensal_credito
 
-            saldo_devedor_credito = saldo_devedor_anterior + juros_mensal_credito - parcela_mensal_credito_real
+            saldo_devedor_credito = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"] - amortizacao_mensal
 
             # Cálculo da Aplicação
             saldo_aplicacao_garantia = df_evolucao.loc[mes - 1, "Saldo Aplicacao Garantia"]
@@ -636,3 +630,19 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
     except Exception as e:
         st.error(f"Ocorreu um erro durante a simulação: {e}")
         st.warning("Por favor, verifique os dados inseridos e tente novamente.")
+
+# --- FIM DO BOTÃO ---
+        # ... (Seu código existente de exibição de resultados, gráficos, etc.) ...
+
+                
+# --- SEÇÃO DE OBSERVAÇÕES IMPORTANTES (FORA DO if st.button) ---
+# --- Observações Importantes (fora do botão, sempre visíveis) ---
+st.divider() # Outro divisor
+st.subheader("💡 Observações Importantes:")
+st.write("""
+- Os cálculos são baseados na **Tabela Price** para o crédito.
+- O rendimento da aplicação é calculado com **juros compostos mensais**.
+- O **Imposto de Renda (IR)** na aplicação é aplicado sobre o rendimento bruto total ao final do período, conforme a alíquota informada.
+- A **TR (Taxa Referencial)** é uma taxa de juros que pode variar. Para simulações futuras, considere que seu valor pode mudar.
+- Esta é apenas uma simulação e os valores reais podem variar. Consulte sempre um profissional financeiro.
+""")
