@@ -495,6 +495,8 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
         df_evolucao.loc[0, "Saldo Devedor Credito"] = saldo_devedor_inicial
         df_evolucao.loc[0, "Saldo Aplicacao Garantia"] = valor_aplicacao
         
+        saldo_devedor_atual = saldo_devedor_inicial
+
         for mes in range(1, prazo_credito_meses + 1):
             
             # ATUALIZAÇÃO DA TAXA DE JUROS SE FOR PÓS-FIXADA
@@ -502,54 +504,40 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
             if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
                 taxa_juros_mensal_efetiva += taxa_indexador_mensal
             
-            saldo_devedor_anterior = df_evolucao.loc[mes - 1, "Saldo Devedor Credito"]
-            
-            # Correção do Saldo Devedor para o cálculo da parcela (no caso de taxa pós)
-            saldo_devedor_atualizado = saldo_devedor_anterior * (1 + taxa_indexador_mensal)
-            
-            # Cálculo do Crédito (Tabela Price)
-            juros_mensal_credito = saldo_devedor_anterior * taxa_juros_mensal_efetiva
-            
+            # Na carência, a parcela é apenas os juros do saldo devedor
             if usar_carencia and mes <= meses_carencia:
-                # Na carência, a parcela é apenas os juros do saldo devedor
+                juros_mensal_credito = saldo_devedor_atual * taxa_juros_mensal_efetiva
                 parcela_mensal_credito_real = juros_mensal_credito
                 amortizacao_mensal = 0.0
             else:
-                if mes == meses_carencia + 1 or tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
-                    # Recalcular a parcela após a carência, usando o saldo devedor atual
-                    saldo_devedor_para_pmt = saldo_devedor_atualizado if tipo_taxa_credito == "Pós-fixada (TR + Taxa)" else df_evolucao.loc[mes-1, 'Saldo Devedor Credito']
-                    
-                    if saldo_devedor_para_pmt > 0:
-                        parcela_apos_ajuste = npf.pmt(
-                            taxa_juros_mensal_efetiva,
-                            prazo_credito_meses - mes + 1,
-                            -saldo_devedor_para_pmt,
-                        )
-                        parcela_mensal_credito_real = parcela_apos_ajuste
-                    else:
-                        parcela_mensal_credito_real = 0.0
-                else:
+                # Recalculate PMT each month based on the remaining term and current balance
+                if saldo_devedor_atual > 0:
                     parcela_mensal_credito_real = npf.pmt(
-                        taxa_juros_pactuada_mensal,
-                        prazo_credito_meses,
-                        -saldo_devedor_inicial,
+                        taxa_juros_mensal_efetiva,
+                        prazo_credito_meses - mes + 1,
+                        -saldo_devedor_atual,
                     )
+                else:
+                    parcela_mensal_credito_real = 0.0
                 
+                juros_mensal_credito = saldo_devedor_atual * taxa_juros_mensal_efetiva
                 amortizacao_mensal = parcela_mensal_credito_real - juros_mensal_credito
+            
+            # Update the balance for the next month
+            saldo_devedor_atual -= amortizacao_mensal
 
-            saldo_devedor_credito = saldo_devedor_anterior + juros_mensal_credito - parcela_mensal_credito_real
+            # Now update the DataFrame with the calculated values
+            df_evolucao.loc[mes, "Juros Mensal Credito"] = juros_mensal_credito
+            df_evolucao.loc[mes, "Amortizacao Mensal"] = amortizacao_mensal
+            df_evolucao.loc[mes, "Parcela Mensal Credito"] = parcela_mensal_credito_real
+            df_evolucao.loc[mes, "Saldo Devedor Credito"] = saldo_devedor_atual
 
-            # Cálculo da Aplicação
+            # Calculation of the application remains the same
             saldo_aplicacao_garantia = df_evolucao.loc[mes - 1, "Saldo Aplicacao Garantia"]
             rendimento_bruto_mensal_aplicacao = saldo_aplicacao_garantia * taxa_rendimento_aplicacao_mensal
             ir_mensal_aplicacao = rendimento_bruto_mensal_aplicacao * ir_aliquota
             rendimento_liquido_mensal_aplicacao = rendimento_bruto_mensal_aplicacao - ir_mensal_aplicacao
             saldo_aplicacao_garantia += rendimento_liquido_mensal_aplicacao
-
-            df_evolucao.loc[mes, "Saldo Devedor Credito"] = saldo_devedor_credito
-            df_evolucao.loc[mes, "Juros Mensal Credito"] = juros_mensal_credito
-            df_evolucao.loc[mes, "Amortizacao Mensal"] = amortizacao_mensal
-            df_evolucao.loc[mes, "Parcela Mensal Credito"] = parcela_mensal_credito_real
             df_evolucao.loc[mes, "Saldo Aplicacao Garantia"] = saldo_aplicacao_garantia
             df_evolucao.loc[mes, "Rendimento Bruto Mensal da Aplicacao"] = rendimento_bruto_mensal_aplicacao
             df_evolucao.loc[mes, "IR Mensal da Aplicacao"] = ir_mensal_aplicacao
