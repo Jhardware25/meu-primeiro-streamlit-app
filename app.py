@@ -507,19 +507,22 @@ if st.button("🚀 **Simular Operação**", key="btn_simular_nova_operacao", use
             
             # ATUALIZAÇÃO DA TAXA DE JUROS SE FOR PÓS-FIXADA
             if tipo_taxa_credito == "Pós-fixada (TR + Taxa)":
-                taxa_juros_mensal_efetiva = taxa_juros_pactuada_mensal + taxa_indexador_mensal
-                juros_mensal_credito = saldo_devedor_atual * taxa_juros_mensal_efetiva
-                saldo_devedor_corrigido = saldo_devedor_atual + juros_mensal_credito
+                # Primeiro, corrige o saldo devedor pelo indexador
+                saldo_devedor_apos_correcao = saldo_devedor_atual * (1 + taxa_indexador_mensal)
+
+                # Depois, calcula os juros sobre o saldo corrigido
+                juros_mensal_credito = saldo_devedor_apos_correcao * taxa_juros_pactuada_mensal
                 
                 # Recalcula a parcela a cada mês com base no saldo devedor corrigido
+                # A taxa de juros usada no PMT é a taxa pactuada, pois a correção do indexador já foi feita no saldo
                 parcela_mensal_credito_real = npf.pmt(
-                    taxa_juros_mensal_efetiva,
+                    taxa_juros_pactuada_mensal,
                     prazo_credito_meses - mes + 1,
-                    -saldo_devedor_atual,
+                    -saldo_devedor_apos_correcao,
                 )
                 
                 amortizacao_mensal = parcela_mensal_credito_real - juros_mensal_credito
-                saldo_devedor_atual -= amortizacao_mensal
+                saldo_devedor_atual = saldo_devedor_apos_correcao - amortizacao_mensal
 
             else: # Prefixada
                 juros_mensal_credito = saldo_devedor_atual * taxa_juros_pactuada_mensal
